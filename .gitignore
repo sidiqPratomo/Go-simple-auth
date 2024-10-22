@@ -1,0 +1,10 @@
+*.out
+*.html
+*.env
+server/file
+assets/doctor_certificates/*
+assets/profile_pictures/*
+sql/pharmacy-drugs-dml.sql
+Makefile/Makefile
+Makefile
+*.pem
