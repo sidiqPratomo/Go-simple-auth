@@ -1,15 +1,24 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"os"
+
+	"github.com/sidiqPratomo/DJKI-Pengaduan/config"
+	"github.com/sidiqPratomo/DJKI-Pengaduan/server"
+	"github.com/sirupsen/logrus"
+)
 
 func main() {
-	router := gin.Default()
+	// Initialize the logger
+	log := logrus.New()
+	log.Out = os.Stdout
 
- router.GET("/ping", func(c *gin.Context) {
-  c.JSON(200, gin.H{
-   "message": "pong",
-  })
- })
+	// Initialize configuration
+	conf := config.Init(log)
 
- router.Run(":8080")
+	// Create router with database connection
+	router := server.CreateRouter(log, conf)
+
+	// Run the server
+	log.Fatal(router.Run(":8080"))
 }
