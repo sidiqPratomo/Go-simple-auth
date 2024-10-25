@@ -12,7 +12,6 @@ import (
 type Config struct {
 	Port                string
 	FEPort              string
-	DbUrl               string
 	DbUsername          string
 	DbPassword          string
 	DbHost              string
@@ -65,7 +64,6 @@ func Init(log *logrus.Logger) *Config {
 	return &Config{
 		Port:                os.Getenv("BE_PORT"),
 		FEPort:              os.Getenv("FE_PORT"),
-		DbUrl:               os.Getenv("DATABASE_URL"),
 		DbUsername:          os.Getenv("DB_USERNAME"),
 		DbPassword:          os.Getenv("DB_PASSWORD"),
 		DbHost:              os.Getenv("DB_HOST"),
