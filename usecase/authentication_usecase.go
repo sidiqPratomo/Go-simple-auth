@@ -13,27 +13,37 @@ import (
 	"github.com/sidiqPratomo/DJKI-Pengaduan/util"
 )
 
-type AuthenticationUsecase interface{
-	RegisterUser(ctx context.Context) error 
+type AuthenticationUsecase interface {
+	RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error
 }
 
-type authenticationUsecaseImpl struct{
+type authenticationUsecaseImpl struct {
 	userRepository repository.UserRepository
-	emailHelper util.EmailHelper
+	emailHelper    util.EmailHelper
+	transaction    repository.Transaction
+	hashHelper     util.HashHelperIntf
+	JwtHelper      util.JwtAuthentication
 }
 
-// type AuthenticationUsecaseImplOpts struct{
-// 	userRepository repository.UserRepository
-// }
+type AuthenticationUsecaseImplOpts struct {
+	UserRepository repository.UserRepository
+	Transaction    repository.Transaction
+	HashHelper     util.HashHelperIntf
+	JwtHelper      util.JwtAuthentication
+	EmailHelper    util.EmailHelper
+}
 
-func NewAuthenticationUsecaseImpl(UserRepository repository.UserRepository) authenticationUsecaseImpl{
+func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authenticationUsecaseImpl {
 	return authenticationUsecaseImpl{
-		userRepository: UserRepository,
+		userRepository: opts.UserRepository,
+		transaction:    opts.Transaction,
+		emailHelper:    opts.EmailHelper,
+		JwtHelper:      opts.JwtHelper,
+		hashHelper:     opts.HashHelper,
 	}
 }
 
-func (u *authenticationUsecaseImpl)RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error {
-	// Convert the DTO to an Account entity
+func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error {
 	account := dto.RegisterRequestToAccount(registerDTO)
 
 	isNameValid := util.RegexValidate(account.Username, appconstant.NameRegexPattern)
@@ -41,41 +51,58 @@ func (u *authenticationUsecaseImpl)RegisterUser(ctx context.Context, registerDTO
 		return apperror.InvalidNameError(errors.New("invalid name"))
 	}
 
-	// Step 1: Check if the email is already registered
 	existingAccountByEmail, err := u.userRepository.FindAccountByEmail(ctx, account.Email)
 	if err != nil {
-		return err
+		return apperror.InternalServerError(err)
 	}
 
 	if existingAccountByEmail != nil {
-		// If email is found, update OTP and send it again
-		err := u.updateOTPAndSendEmail(ctx, int(existingAccountByEmail.Id), existingAccountByEmail.Email)
-		if err != nil {
+		if err := u.updateOTPAndSendEmail(ctx, int(existingAccountByEmail.Id), existingAccountByEmail.Email); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	// Step 2: Check if the username is already taken
 	existingAccountByUsername, err := u.userRepository.FindAccountByUsername(ctx, account.Username)
 	if err != nil {
-		return err
+		return apperror.InternalServerError(err)
 	}
 
 	if existingAccountByUsername != nil {
 		return errors.New("username has been taken")
 	}
 
-	// Step 3: Create a new user if both email and username are not taken
-	accountId, err := u.userRepository.PostOneUser(ctx, account)
+	hashedPassword, err := u.hashHelper.HashPassword(account.Password)
 	if err != nil {
-		return err
+		return apperror.InternalServerError(err)
+	}
+	account.Password = hashedPassword
+
+	tx, err := u.transaction.BeginTx()
+	if err != nil {
+		return apperror.InternalServerError(err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	accountRepo := tx.UserRepository()
+	accountId, err := accountRepo.PostOneUser(ctx, account)
+	if err != nil {
+		tx.Rollback()
+		return apperror.InternalServerError(err)
+	}
+	accountId64 := int(*accountId)
+
+	if err := u.createAndSendOTP(ctx, &accountId64, account.Email); err != nil {
+		tx.Rollback()
+		return apperror.InternalServerError(err)
 	}
 
-	// Step 4: Generate OTP and associate it with the new user
-	err = u.createAndSendOTP(ctx, accountId, account.Email)
-	if err != nil {
-		return err
+	if err := tx.Commit(); err != nil {
+		return apperror.InternalServerError(err)
 	}
 
 	return nil

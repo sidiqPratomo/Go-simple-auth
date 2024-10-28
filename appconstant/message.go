@@ -80,4 +80,5 @@ const (
 	MsgInvalidPharmacyOperational      = "invalid pharmacy operational"
 	MsgInvalidPharmacyCourier          = "invalid pharmacy courier"
 	MsgOngoingOrderExists              = "ongoing order exists"
+	MsgCheckEmailRegister			   = "Please check your email for the OTP to complete the registration"
 )
