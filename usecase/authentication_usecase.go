@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
@@ -44,7 +45,10 @@ func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authentica
 }
 
 func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error {
-	account := dto.RegisterRequestToAccount(registerDTO)
+	account, err := dto.RegisterRequestToAccount(registerDTO)
+	if err != nil{
+		return err
+	}
 
 	isNameValid := util.RegexValidate(account.Username, appconstant.NameRegexPattern)
 	if !isNameValid {
@@ -52,10 +56,12 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 	}
 
 	existingAccountByEmail, err := u.userRepository.FindAccountByEmail(ctx, account.Email)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return apperror.InternalServerError(err)
 	}
-
+	if existingAccountByEmail.EmailVerifiedAt !=nil{
+		return apperror.BadRequestError(errors.New("user already exist and verified"))
+	}
 	if existingAccountByEmail != nil {
 		if err := u.updateOTPAndSendEmail(ctx, int(existingAccountByEmail.Id), existingAccountByEmail.Email); err != nil {
 			return err
@@ -64,7 +70,7 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 	}
 
 	existingAccountByUsername, err := u.userRepository.FindAccountByUsername(ctx, account.Username)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return apperror.InternalServerError(err)
 	}
 

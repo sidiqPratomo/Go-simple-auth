@@ -1,6 +1,11 @@
 package dto
 
-import "github.com/sidiqPratomo/DJKI-Pengaduan/entity"
+import (
+	"errors"
+
+	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
+	"github.com/sidiqPratomo/DJKI-Pengaduan/entity"
+)
 
 type RegisterRequest struct {
 	Email string `json:"email" binding:"required,email" validate:"required,email"`
@@ -13,9 +18,23 @@ type RegisterRequest struct {
     Phone_number string `json:"phone_number" binding:"required"`
 }
 
-func RegisterRequestToAccount(RegisterRquest RegisterRequest) entity.User {
+func RegisterRequestToAccount(RegisterRquest RegisterRequest) (entity.User, error) {
+	var Gender string
+	if(RegisterRquest.Gender == 1){
+		Gender = "Male"
+	}else {
+		Gender = "Female"
+	}
+	if RegisterRquest.Password != RegisterRquest.Password_confirmation{
+		return entity.User{}, apperror.BadRequestError(errors.New("passwords do not match"))
+	}
 	return entity.User{
 		Email: RegisterRquest.Email,
 		Username:  RegisterRquest.Username,
-	}
+		FirstName: RegisterRquest.First_name,
+		LastName: RegisterRquest.Last_name,
+		Password: RegisterRquest.Password,
+		Gender: Gender,
+		PhoneNumber: RegisterRquest.Phone_number,
+	}, nil
 }

@@ -65,7 +65,7 @@ func Init() {
 
 	srv := http.Server{
 		Handler: router,
-		Addr:    config.Port,
+		Addr:    config.Host + config.Port,
 	}
 
 	go func() {

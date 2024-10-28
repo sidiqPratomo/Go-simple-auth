@@ -16,7 +16,7 @@ type UserRepository interface {
 	GetAllUser(ctx context.Context, user entity.User) ([]entity.User, error)
 	FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error)
 	FindAccountByUsername(ctx context.Context, username string) (*entity.UserRoles, error)
-	CreateOTP(ctx context.Context, userId string)(*string, error)
+	CreateOTP(ctx context.Context, userId string) (*string, error)
 }
 
 type userRepositoryDB struct {
@@ -51,35 +51,40 @@ func (r *userRepositoryDB) FindAccountByUsername(ctx context.Context, username s
 	return &account, nil
 }
 
-func (r *userRepositoryDB) CreateOTP(ctx context.Context, userId string)(*string, error) {
-	
+func (r *userRepositoryDB) CreateOTP(ctx context.Context, userId string) (*string, error) {
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	otp := fmt.Sprintf("%06d", rng.Intn(900000)+100000)
 
 	otpExpireTime := time.Now().Add(10 * time.Minute)
 
-	_, err:= r.db.ExecContext(ctx, database.InserOtpQuery,userId, otp, otpExpireTime)
-	if err!=nil{
+	_, err := r.db.ExecContext(ctx, database.InserOtpQuery, userId, otp, otpExpireTime)
+	if err != nil {
 		return nil, err
 	}
 	return &otp, nil
 }
 
 func (r *userRepositoryDB) PostOneUser(ctx context.Context, user entity.User) (*int, error) {
-	var userId int
-
-	err := r.db.QueryRowContext(ctx, database.PostOneAccountQuery,
+	result, err := r.db.ExecContext(ctx, database.PostOneAccountQuery,
 		user.Email,
+		user.Gender,
+		user.Username,
 		user.Password,
 		user.FirstName,
 		user.LastName,
 		user.PhoneNumber,
-	).Scan(&userId)
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userId, nil
+	userId, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	userIdInt := int(userId)
+	return &userIdInt, nil
 }
 
 func (r *userRepositoryDB) GetAllUser(ctx context.Context, user entity.User) ([]entity.User, error) {

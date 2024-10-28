@@ -43,7 +43,12 @@ func newRouter(h routerOpts, u utilOpts, config *config.Config, log *logrus.Logg
 	// adminAuthorizationMiddleware := middleware.AdminAuthorizationMiddleware
 
 	corsRouting(router, corsConfig)
-	authenticationRouting(router, h.Authentication)
+	// authenticationRouting(router, h.Authentication)
+
+	api := router.Group("/api/v1")
+	{
+		authenticationRouting(api, h.Authentication)
+	}
 
 	return router
 }
@@ -57,6 +62,8 @@ func corsRouting(router *gin.Engine, configCors cors.Config) {
 	router.Use(cors.New(configCors))
 }
 
-func authenticationRouting(router *gin.Engine, handler *handler.AuthenticationHandler) {
-	router.POST("/users/register", handler.RegisterUser)
+func authenticationRouting(router *gin.RouterGroup, handler *handler.AuthenticationHandler) {
+	authRouter:= router.Group("/auth")
+
+	authRouter.POST("/register-user", handler.RegisterUser)
 }
