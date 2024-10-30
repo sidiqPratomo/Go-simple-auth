@@ -2,12 +2,10 @@ package usecase
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/sidiqPratomo/DJKI-Pengaduan/appconstant"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/dto"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/repository"
@@ -45,22 +43,9 @@ func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authentica
 }
 
 func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error {
-	account, err := dto.RegisterRequestToAccount(registerDTO)
-	if err != nil{
-		return err
-	}
-
-	isNameValid := util.RegexValidate(account.Username, appconstant.NameRegexPattern)
-	if !isNameValid {
-		return apperror.InvalidNameError(errors.New("invalid name"))
-	}
-
-	existingAccountByEmail, err := u.userRepository.FindAccountByEmail(ctx, account.Email)
-	if err != nil && err != sql.ErrNoRows {
+	existingAccountByEmail, err := u.userRepository.FindAccountByEmail(ctx, registerDTO.Email)
+	if err != nil && err != repository.ErrNotFound {
 		return apperror.InternalServerError(err)
-	}
-	if existingAccountByEmail.EmailVerifiedAt !=nil{
-		return apperror.BadRequestError(errors.New("user already exist and verified"))
 	}
 	if existingAccountByEmail != nil {
 		if err := u.updateOTPAndSendEmail(ctx, int(existingAccountByEmail.Id), existingAccountByEmail.Email); err != nil {
@@ -68,9 +53,12 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 		}
 		return nil
 	}
+	if existingAccountByEmail.EmailVerifiedAt != nil{
+		return apperror.BadRequestError(errors.New("user already exist and verified"))
+	}
 
-	existingAccountByUsername, err := u.userRepository.FindAccountByUsername(ctx, account.Username)
-	if err != nil && err != sql.ErrNoRows {
+	existingAccountByUsername, err := u.userRepository.FindAccountByUsername(ctx, registerDTO.Username)
+	if err != nil && err != repository.ErrNotFound {
 		return apperror.InternalServerError(err)
 	}
 
@@ -78,7 +66,12 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 		return errors.New("username has been taken")
 	}
 
-	hashedPassword, err := u.hashHelper.HashPassword(account.Password)
+	account, err := dto.RegisterRequestToAccount(registerDTO)
+	if err != nil{
+		return err
+	}
+
+	hashedPassword, err := u.hashHelper.HashPassword(registerDTO.Password)
 	if err != nil {
 		return apperror.InternalServerError(err)
 	}
@@ -115,13 +108,11 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 }
 
 func (u *authenticationUsecaseImpl) updateOTPAndSendEmail(ctx context.Context, userId int, email string) error {
-	// Generate a new OTP
 	otp, err := u.userRepository.CreateOTP(ctx, strconv.Itoa(userId))
 	if err != nil {
 		return err
 	}
 
-	// Step 5: Send the OTP via email
 	err = u.sendOTPEmail(email, *otp)
 	if err != nil {
 		return err
@@ -131,13 +122,11 @@ func (u *authenticationUsecaseImpl) updateOTPAndSendEmail(ctx context.Context, u
 }
 
 func (u *authenticationUsecaseImpl) createAndSendOTP(ctx context.Context, userId *int, email string) error {
-	// Generate a new OTP
 	otp, err := u.userRepository.CreateOTP(ctx, strconv.Itoa(*userId))
 	if err != nil {
 		return err
 	}
 
-	// Step 5: Send the OTP via email
 	err = u.sendOTPEmail(email, *otp)
 	if err != nil {
 		return err
@@ -167,6 +156,36 @@ func (u *authenticationUsecaseImpl) sendOTPEmail(email string, otp string) error
 	err = u.emailHelper.SendEmail()
 	if err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error {
+	// Step 1: Find user by ID
+	//FIX Find By OTP and expired_at >= now()
+	otp := verifyDTO.OTP
+	existingAccount, err := u.userRepository.FindAccountByEmail(ctx, otp)
+	if err != nil {
+		return apperror.InternalServerError(err)
+	}
+	if existingAccount == nil {
+		return apperror.NotFoundError()
+	}
+
+	// Step 2: Verify the OTP
+	isValid, err := u.userRepository.VerifyOTP(ctx, userId, verifyDTO.OTP)
+	if err != nil {
+		return apperror.InternalServerError(err)
+	}
+	if !isValid {
+		return apperror.BadRequestError(errors.New("invalid OTP"))
+	}
+
+	// Step 3: Update the user's email verified status
+	err = u.userRepository.UpdateUserVerificationStatus(ctx, userId)
+	if err != nil {
+		return apperror.InternalServerError(err)
 	}
 
 	return nil

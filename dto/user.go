@@ -3,8 +3,10 @@ package dto
 import (
 	"errors"
 
+	"github.com/sidiqPratomo/DJKI-Pengaduan/appconstant"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/entity"
+	"github.com/sidiqPratomo/DJKI-Pengaduan/util"
 )
 
 type RegisterRequest struct {
@@ -28,6 +30,10 @@ func RegisterRequestToAccount(RegisterRquest RegisterRequest) (entity.User, erro
 	if RegisterRquest.Password != RegisterRquest.Password_confirmation{
 		return entity.User{}, apperror.BadRequestError(errors.New("passwords do not match"))
 	}
+	isNameValid := util.RegexValidate(RegisterRquest.Username, appconstant.NameRegexPattern)
+	if !isNameValid {
+		return entity.User{}, apperror.InvalidNameError(errors.New("invalid name"))
+	}
 	return entity.User{
 		Email: RegisterRquest.Email,
 		Username:  RegisterRquest.Username,
@@ -37,4 +43,8 @@ func RegisterRequestToAccount(RegisterRquest RegisterRequest) (entity.User, erro
 		Gender: Gender,
 		PhoneNumber: RegisterRquest.Phone_number,
 	}, nil
+}
+
+type VerifyOTPRequest struct {
+	OTP     string `json:"otp" binding:"required"`
 }

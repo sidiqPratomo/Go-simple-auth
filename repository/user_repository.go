@@ -17,6 +17,8 @@ type UserRepository interface {
 	FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error)
 	FindAccountByUsername(ctx context.Context, username string) (*entity.UserRoles, error)
 	CreateOTP(ctx context.Context, userId string) (*string, error)
+	VerifyOTP(ctx context.Context, userId string, otp string) (bool, error)
+	UpdateUserVerificationStatus(ctx context.Context, userId string) error
 }
 
 type userRepositoryDB struct {
@@ -29,11 +31,28 @@ func NewUserRepositoryDB(db *sql.DB) userRepositoryDB {
 	}
 }
 
+func (r *userRepositoryDB) FindAccountByOtp(ctx context.Context, otp string) (*entity.UserRoles, error) {
+	var account entity.UserRoles
+	err := r.db.QueryRowContext(ctx, database.FindAccountByEmailQuery, otp).Scan(
+		&account.Id, &account.Photo, &account.FirstName, &account.LastName, &account.Username, &account.Email, &account.Gender, &account.Address, &account.PhoneNumber, &account.Password, &account.EmailVerifiedAt, &account.RoleId, &account.RoleName, &account.RoleCode)
+	if err != nil {
+		if err == sql.ErrNoRows{
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &account, nil
+}
+
 func (r *userRepositoryDB) FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error) {
 	var account entity.UserRoles
 	err := r.db.QueryRowContext(ctx, database.FindAccountByEmailQuery, email).Scan(
 		&account.Id, &account.Photo, &account.FirstName, &account.LastName, &account.Username, &account.Email, &account.Gender, &account.Address, &account.PhoneNumber, &account.Password, &account.EmailVerifiedAt, &account.RoleId, &account.RoleName, &account.RoleCode)
 	if err != nil {
+		if err == sql.ErrNoRows{
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -45,6 +64,9 @@ func (r *userRepositoryDB) FindAccountByUsername(ctx context.Context, username s
 	err := r.db.QueryRowContext(ctx, database.FindAccountByEmailQuery, username).Scan(
 		&account.Id, &account.Photo, &account.FirstName, &account.LastName, &account.Username, &account.Email, &account.Gender, &account.Address, &account.PhoneNumber, &account.Password, &account.EmailVerifiedAt, &account.RoleId, &account.RoleName, &account.RoleCode)
 	if err != nil {
+		if err == sql.ErrNoRows{
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -123,4 +145,22 @@ func (r *userRepositoryDB) GetAllUser(ctx context.Context, user entity.User) ([]
 	}
 
 	return users, nil
+}
+
+func (r *userRepositoryDB) VerifyOTP(ctx context.Context, userId string, otp string) (bool, error) {
+	var otpRecord string
+	err := r.db.QueryRowContext(ctx, "SELECT otp FROM otps WHERE user_id = ? AND otp = ? AND expiry_time > NOW()", userId, otp).Scan(&otpRecord)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil 
+		}
+		return false, err // Some other error occurred
+	}
+
+	return true, nil // OTP is valid
+}
+
+func (r *userRepositoryDB) UpdateUserVerificationStatus(ctx context.Context, userId string) error {
+	_, err := r.db.ExecContext(ctx, "UPDATE users SET email_verified_at = NOW() WHERE id = ?", userId)
+	return err
 }

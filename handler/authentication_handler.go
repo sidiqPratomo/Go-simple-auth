@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/dto"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/usecase"
-	"github.com/sidiqPratomo/DJKI-Pengaduan/util"
 )
 
 type AuthenticationHandler struct {
@@ -34,5 +33,5 @@ func (h *AuthenticationHandler) RegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	util.ResponseRegister(ctx, nil)
+	dto.ResponseRegister(ctx, nil)
 }
