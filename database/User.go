@@ -6,17 +6,18 @@ const (
 		VALUES (?, ?, ?)
 	`
 	FindAccountByEmailQuery = `
-		SELECT u.id, 
-       		u.photo, 
+		SELECT 
+			u.id, 
+       		COALESCE(u.photo, '') AS photo,
        		u.first_name,
 			u.last_name,
 			u.username,
 			u.email,
-			u.gender,
-			u.address,
-			u.phone_number,
+			COALESCE(u.gender,'') AS gender,
+			COALESCE(u.address, '') AS address,
+			COALESCE(u.phone_number, '') AS phone_number,
 			u.password,
-			u.email_verified_at,
+			CAST(u.email_verified_at AS DATETIME) AS email_verified_at,
        		ru.roles_id, 
        		r.name AS role_name, 
 			r.code as role_code
@@ -24,20 +25,20 @@ const (
 		JOIN role_users ru ON u.id = ru.users_id
 		JOIN roles r ON ru.roles_id = r.id
 		WHERE u.email LIKE ?
-		AND u.status = 1
-		AND u.email_verified_at IS NOT NULL;
+		AND u.status = 1;
 	`
 
 	FindAccountByUsernameQuery = `
-		SELECT u.id, 
-       		u.photo, 
+		SELECT 
+			u.id, 
+       		COALESCE(u.photo, '') AS photo,
        		u.first_name,
 			u.last_name,
 			u.username,
 			u.email,
-			u.gender,
-			u.address,
-			u.phone_number,
+			COALESCE(u.gender,'') AS gender,
+			COALESCE(u.address, '') AS address,
+			COALESCE(u.phone_number, '') AS phone_number,
 			u.password,
 			u.email_verified_at,
        		ru.roles_id, 
@@ -53,6 +54,11 @@ const (
 	PostOneAccountQuery = `
     	INSERT INTO users (email, gender, username, password, first_name, last_name, phone_number, created_time)
     	VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+	`
+
+	PostRoleUserQuery = `
+    	INSERT INTO role_users (users_id, roles_id, created_time, updated_time)
+    	VALUES (?, ?, NOW(), NOW())
 	`
 
 	GetAllUsers = `

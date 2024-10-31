@@ -47,19 +47,20 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 	if err != nil && err != repository.ErrNotFound {
 		return apperror.InternalServerError(err)
 	}
-	if existingAccountByEmail != nil {
-		if err := u.updateOTPAndSendEmail(ctx, int(existingAccountByEmail.Id), existingAccountByEmail.Email); err != nil {
-			return err
-		}
-		return nil
-	}
-	if existingAccountByEmail.EmailVerifiedAt != nil{
-		return apperror.BadRequestError(errors.New("user already exist and verified"))
-	}
-
 	existingAccountByUsername, err := u.userRepository.FindAccountByUsername(ctx, registerDTO.Username)
 	if err != nil && err != repository.ErrNotFound {
 		return apperror.InternalServerError(err)
+	}
+
+	if existingAccountByEmail != nil && existingAccountByUsername != nil {
+		// Check if the account has not verified the email yet
+		if existingAccountByEmail.EmailVerifiedAt == nil { // Now using nil check for *time.Time
+			if err := u.updateOTPAndSendEmail(ctx, int(existingAccountByEmail.Id), existingAccountByEmail.Email); err != nil {
+				return err
+			}
+			return nil
+		}
+		return apperror.BadRequestError(errors.New("user already exists and verified"))
 	}
 
 	if existingAccountByUsername != nil {
@@ -94,6 +95,11 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 		return apperror.InternalServerError(err)
 	}
 	accountId64 := int(*accountId)
+	err = accountRepo.CreateRoleUser(ctx, accountId64)
+	if err != nil {
+		tx.Rollback()
+		return apperror.InternalServerError(err)
+	}
 
 	if err := u.createAndSendOTP(ctx, &accountId64, account.Email); err != nil {
 		tx.Rollback()
@@ -137,7 +143,7 @@ func (u *authenticationUsecaseImpl) createAndSendOTP(ctx context.Context, userId
 
 func (u *authenticationUsecaseImpl) sendOTPEmail(email string, otp string) error {
 	// Define the subject and the email template
-	subject := "Your OTP Code"
+	subject := "Pengaduan DJKI-OTP"
 	emailTemplate := `<p>Your OTP code is <strong>{{.OTP}}</strong>. It will expire in 10 minutes.</p>`
 
 	// Set the recipient(s) and subject
@@ -174,7 +180,7 @@ func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, veri
 	}
 
 	// Step 2: Verify the OTP
-	isValid, err := u.userRepository.VerifyOTP(ctx, userId, verifyDTO.OTP)
+	isValid, err := u.userRepository.VerifyOTP(ctx, otp, verifyDTO.OTP)
 	if err != nil {
 		return apperror.InternalServerError(err)
 	}
@@ -183,7 +189,7 @@ func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, veri
 	}
 
 	// Step 3: Update the user's email verified status
-	err = u.userRepository.UpdateUserVerificationStatus(ctx, userId)
+	err = u.userRepository.UpdateUserVerificationStatus(ctx, otp)
 	if err != nil {
 		return apperror.InternalServerError(err)
 	}

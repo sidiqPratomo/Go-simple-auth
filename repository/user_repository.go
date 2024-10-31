@@ -19,6 +19,7 @@ type UserRepository interface {
 	CreateOTP(ctx context.Context, userId string) (*string, error)
 	VerifyOTP(ctx context.Context, userId string, otp string) (bool, error)
 	UpdateUserVerificationStatus(ctx context.Context, userId string) error
+	CreateRoleUser(ctx context.Context, userId int)  error
 }
 
 type userRepositoryDB struct {
@@ -48,21 +49,46 @@ func (r *userRepositoryDB) FindAccountByOtp(ctx context.Context, otp string) (*e
 func (r *userRepositoryDB) FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error) {
 	var account entity.UserRoles
 	err := r.db.QueryRowContext(ctx, database.FindAccountByEmailQuery, email).Scan(
-		&account.Id, &account.Photo, &account.FirstName, &account.LastName, &account.Username, &account.Email, &account.Gender, &account.Address, &account.PhoneNumber, &account.Password, &account.EmailVerifiedAt, &account.RoleId, &account.RoleName, &account.RoleCode)
+		&account.Id, 
+		&account.Photo, 
+		&account.FirstName, 
+		&account.LastName, 
+		&account.Username, 
+		&account.Email, 
+		&account.Gender, 
+		&account.Address, 
+		&account.PhoneNumber, 
+		&account.Password, 
+		&account.EmailVerifiedAt, 
+		&account.RoleId, 
+		&account.RoleName, 
+		&account.RoleCode)
 	if err != nil {
 		if err == sql.ErrNoRows{
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-
 	return &account, nil
 }
 
 func (r *userRepositoryDB) FindAccountByUsername(ctx context.Context, username string) (*entity.UserRoles, error) {
 	var account entity.UserRoles
-	err := r.db.QueryRowContext(ctx, database.FindAccountByEmailQuery, username).Scan(
-		&account.Id, &account.Photo, &account.FirstName, &account.LastName, &account.Username, &account.Email, &account.Gender, &account.Address, &account.PhoneNumber, &account.Password, &account.EmailVerifiedAt, &account.RoleId, &account.RoleName, &account.RoleCode)
+	err := r.db.QueryRowContext(ctx, database.FindAccountByUsernameQuery, username).Scan(
+		&account.Id, 
+		&account.Photo, 
+		&account.FirstName, 
+		&account.LastName, 
+		&account.Username, 
+		&account.Email, 
+		&account.Gender, 
+		&account.Address, 
+		&account.PhoneNumber, 
+		&account.Password, 
+		&account.EmailVerifiedAt, 
+		&account.RoleId, 
+		&account.RoleName, 
+		&account.RoleCode)
 	if err != nil {
 		if err == sql.ErrNoRows{
 			return nil, ErrNotFound
@@ -88,6 +114,7 @@ func (r *userRepositoryDB) CreateOTP(ctx context.Context, userId string) (*strin
 }
 
 func (r *userRepositoryDB) PostOneUser(ctx context.Context, user entity.User) (*int, error) {
+	fmt.Println("MASUK::::::::")
 	result, err := r.db.ExecContext(ctx, database.PostOneAccountQuery,
 		user.Email,
 		user.Gender,
@@ -107,6 +134,19 @@ func (r *userRepositoryDB) PostOneUser(ctx context.Context, user entity.User) (*
 	}
 	userIdInt := int(userId)
 	return &userIdInt, nil
+}
+
+func (r *userRepositoryDB) CreateRoleUser(ctx context.Context, userId int)  error {
+	roles_id:= 2
+	_, err := r.db.ExecContext(ctx, database.PostRoleUserQuery,
+		userId,
+		roles_id,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *userRepositoryDB) GetAllUser(ctx context.Context, user entity.User) ([]entity.User, error) {

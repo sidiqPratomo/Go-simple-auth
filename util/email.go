@@ -35,7 +35,7 @@ type emailRequest struct {
 
 func (eh *emailHelperIpl) AddRequest(to []string, subject string) {
 	eh.emailRequest = emailRequest{
-		from:    eh.config.SendEmailUsername,
+		from:    eh.config.SendEmailIdentity,
 		to:      to,
 		subject: subject,
 	}

@@ -54,7 +54,7 @@ func Init(log *logrus.Logger) *Config {
 		}).Fatal("error loading .env file")
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		os.Getenv("DB_USERNAME"),    // MySQL username
 		os.Getenv("DB_PASSWORD"),    // MySQL password
 		os.Getenv("DB_HOST"),        // MySQL host
