@@ -17,8 +17,8 @@ type UserRepository interface {
 	FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error)
 	FindAccountByUsername(ctx context.Context, username string) (*entity.UserRoles, error)
 	CreateOTP(ctx context.Context, userId string) (*string, error)
-	VerifyOTP(ctx context.Context, userId string, otp string) (bool, error)
-	UpdateUserVerificationStatus(ctx context.Context, userId string) error
+	VerifyOTP(ctx context.Context, userId int, otp string) (bool, error)
+	UpdateUserVerificationStatus(ctx context.Context, userId int) error
 	CreateRoleUser(ctx context.Context, userId int)  error
 }
 
@@ -104,9 +104,16 @@ func (r *userRepositoryDB) CreateOTP(ctx context.Context, userId string) (*strin
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	otp := fmt.Sprintf("%06d", rng.Intn(900000)+100000)
 
-	otpExpireTime := time.Now().Add(10 * time.Minute)
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		return nil, err
+	}
 
-	_, err := r.db.ExecContext(ctx, database.InserOtpQuery, userId, otp, otpExpireTime)
+	otpExpireTime := time.Now().In(loc).Add(10 * time.Minute)
+
+	otpExpireTimeUTC := otpExpireTime.UTC().Add(7 * time.Hour)
+
+	_, err = r.db.ExecContext(ctx, database.InserOtpQuery, userId, otp, otpExpireTimeUTC)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +121,6 @@ func (r *userRepositoryDB) CreateOTP(ctx context.Context, userId string) (*strin
 }
 
 func (r *userRepositoryDB) PostOneUser(ctx context.Context, user entity.User) (*int, error) {
-	fmt.Println("MASUK::::::::")
 	result, err := r.db.ExecContext(ctx, database.PostOneAccountQuery,
 		user.Email,
 		user.Gender,
@@ -187,9 +193,9 @@ func (r *userRepositoryDB) GetAllUser(ctx context.Context, user entity.User) ([]
 	return users, nil
 }
 
-func (r *userRepositoryDB) VerifyOTP(ctx context.Context, userId string, otp string) (bool, error) {
+func (r *userRepositoryDB) VerifyOTP(ctx context.Context, userId int, otp string) (bool, error) {
 	var otpRecord string
-	err := r.db.QueryRowContext(ctx, "SELECT otp FROM otps WHERE user_id = ? AND otp = ? AND expiry_time > NOW()", userId, otp).Scan(&otpRecord)
+	err := r.db.QueryRowContext(ctx, database.FindUserOtp, userId, otp).Scan(&otpRecord)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil 
@@ -200,7 +206,7 @@ func (r *userRepositoryDB) VerifyOTP(ctx context.Context, userId string, otp str
 	return true, nil // OTP is valid
 }
 
-func (r *userRepositoryDB) UpdateUserVerificationStatus(ctx context.Context, userId string) error {
+func (r *userRepositoryDB) UpdateUserVerificationStatus(ctx context.Context, userId int) error {
 	_, err := r.db.ExecContext(ctx, "UPDATE users SET email_verified_at = NOW() WHERE id = ?", userId)
 	return err
 }

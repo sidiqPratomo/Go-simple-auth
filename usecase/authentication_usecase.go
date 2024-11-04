@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
@@ -14,6 +13,7 @@ import (
 
 type AuthenticationUsecase interface {
 	RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error
+	VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error
 }
 
 type authenticationUsecaseImpl struct {
@@ -155,41 +155,37 @@ func (u *authenticationUsecaseImpl) sendOTPEmail(email string, otp string) error
 	}
 	err := u.emailHelper.CreateBody(emailTemplate, data)
 	if err != nil {
-		return fmt.Errorf("failed to create email body: %w", err)
+		return apperror.InternalServerError(err)
 	}
 
 	// Send the email
 	err = u.emailHelper.SendEmail()
 	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+		return apperror.InternalServerError(err)
 	}
 
 	return nil
 }
 
 func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error {
-	// Step 1: Find user by ID
-	//FIX Find By OTP and expired_at >= now()
-	otp := verifyDTO.OTP
-	existingAccount, err := u.userRepository.FindAccountByEmail(ctx, otp)
-	if err != nil {
+	// Step 1: Find user by Username
+	//FIX Find By OTP and username and expired_at >= now()
+	account, err := u.userRepository.FindAccountByUsername(ctx, verifyDTO.Username)
+	if err != nil{
 		return apperror.InternalServerError(err)
-	}
-	if existingAccount == nil {
-		return apperror.NotFoundError()
 	}
 
 	// Step 2: Verify the OTP
-	isValid, err := u.userRepository.VerifyOTP(ctx, otp, verifyDTO.OTP)
+	isValid, err := u.userRepository.VerifyOTP(ctx, int(account.Id), verifyDTO.OTP)
 	if err != nil {
 		return apperror.InternalServerError(err)
 	}
 	if !isValid {
-		return apperror.BadRequestError(errors.New("invalid OTP"))
+		return apperror.BadRequestError(errors.New("invalid or expired OTP"))
 	}
 
 	// Step 3: Update the user's email verified status
-	err = u.userRepository.UpdateUserVerificationStatus(ctx, otp)
+	err = u.userRepository.UpdateUserVerificationStatus(ctx, int(account.Id))
 	if err != nil {
 		return apperror.InternalServerError(err)
 	}

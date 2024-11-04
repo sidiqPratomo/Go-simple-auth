@@ -35,3 +35,23 @@ func (h *AuthenticationHandler) RegisterUser(ctx *gin.Context) {
 
 	dto.ResponseRegister(ctx, nil)
 }
+
+func (h *AuthenticationHandler) VerifyRegisterUser(ctx *gin.Context) {
+	ctx.Header("Content-Type", "application/json")
+
+	var verifRegisterRequest dto.VerifyOTPRequest
+
+	err := ctx.ShouldBindJSON(&verifRegisterRequest)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	err = h.authenticationUsecase.VerifyUserRegister(ctx.Request.Context(), verifRegisterRequest)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	dto.ResponseRegister(ctx, nil)
+}

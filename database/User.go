@@ -5,6 +5,11 @@ const (
 		INSERT INTO users_otps (user_id, otp, expired_at) 
 		VALUES (?, ?, ?)
 	`
+
+	FindUserOtp =`
+		SELECT otp FROM users_otps WHERE user_id = ? AND otp = ? AND expired_at > NOW()
+	`
+
 	FindAccountByEmailQuery = `
 		SELECT 
 			u.id, 

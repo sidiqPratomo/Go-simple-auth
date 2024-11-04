@@ -33,3 +33,7 @@ func ResponseCreated(ctx *gin.Context, res any) {
 func ResponseRegister(ctx *gin.Context, res any) {
 	ctx.JSON(http.StatusCreated, Response{Message: appconstant.MsgCheckEmailRegister, Data: res})
 }
+
+func ResponseVerifRegister(ctx *gin.Context, res any) {
+	ctx.JSON(http.StatusCreated, Response{Message: appconstant.MsgCheckEmailRegister, Data: res})
+}

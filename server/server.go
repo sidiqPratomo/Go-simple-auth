@@ -66,4 +66,5 @@ func authenticationRouting(router *gin.RouterGroup, handler *handler.Authenticat
 	authRouter:= router.Group("/auth")
 
 	authRouter.POST("/register-user", handler.RegisterUser)
+	authRouter.POST("/verify-registration", handler.VerifyRegisterUser)
 }
