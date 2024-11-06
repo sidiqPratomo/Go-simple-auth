@@ -82,4 +82,5 @@ const (
 	MsgOngoingOrderExists              = "ongoing order exists"
 	MsgCheckEmailRegister			   = "Please check your email for the OTP to complete the registration"
 	MsgVerifyRegister				   = "Registration successful! You can now log in."
+	MsgCheckEmailLogin				   = "Please check your email for the OTP to Login Request"
 )

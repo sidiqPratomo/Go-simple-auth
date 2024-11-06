@@ -16,6 +16,26 @@ func NewAuthenticationHandler(authenticationUsecase usecase.AuthenticationUsecas
 	}
 }
 
+func (h *AuthenticationHandler) Login(ctx *gin.Context){
+	ctx.Header("Content-Type", "application/json")
+
+	var loginRequest dto.LoginRequest
+
+	err := ctx.ShouldBindJSON(&loginRequest)
+	if err != nil{
+		ctx.Error(err)
+		return
+	}
+
+	err = h.authenticationUsecase.LoginUser(ctx, loginRequest)
+	if err != nil{
+		ctx.Error(err)
+		return
+	}
+
+	dto.ResponseLogin(ctx, nil)
+}
+
 func (h *AuthenticationHandler) RegisterUser(ctx *gin.Context) {
 	ctx.Header("Content-Type", "application/json")
 

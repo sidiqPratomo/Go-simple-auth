@@ -14,6 +14,7 @@ import (
 type AuthenticationUsecase interface {
 	RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error
 	VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error
+	LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error
 }
 
 type authenticationUsecaseImpl struct {
@@ -40,6 +41,28 @@ func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authentica
 		JwtHelper:      opts.JwtHelper,
 		hashHelper:     opts.HashHelper,
 	}
+}
+
+func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error {
+	user, err := u.userRepository.FindAccountByUsername(ctx, loginDTO.Username)
+	if err != nil {
+		if err == repository.ErrNotFound {
+			return apperror.BadRequestError(errors.New("username not found"))
+		}
+		return apperror.InternalServerError(err)
+	}
+
+	isPasswordValid,err := u.hashHelper.CheckPassword(loginDTO.Password,[]byte(user.Password))
+	if !isPasswordValid {
+		return apperror.WrongPasswordError(err)
+	}
+	accountId64 := int(user.Id)
+
+	if err := u.createAndSendOTP(ctx, &accountId64, user.Email);err !=nil{
+		return apperror.InternalServerError(err)
+	}
+
+	return nil
 }
 
 func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error {
@@ -184,9 +207,25 @@ func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, veri
 		return apperror.BadRequestError(errors.New("invalid or expired OTP"))
 	}
 
+	tx, err :=u.transaction.BeginTx()
+	if err != nil{
+		return apperror.InternalServerError(err)
+	}
+	defer func(){
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+	updateUserTx := tx.UserRepository()
+
 	// Step 3: Update the user's email verified status
-	err = u.userRepository.UpdateUserVerificationStatus(ctx, int(account.Id))
+	err = updateUserTx.UpdateUserVerificationStatus(ctx, int(account.Id))
 	if err != nil {
+		tx.Rollback()
+		return apperror.InternalServerError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
 		return apperror.InternalServerError(err)
 	}
 

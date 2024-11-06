@@ -10,6 +10,7 @@ import (
 )
 
 type RegisterRequest struct {
+	Nik					  string `json:"nik" binding:"required" validate:"required"`
 	Email                 string `json:"email" binding:"required,email" validate:"required,email"`
 	Username              string `json:"username" binding:"required" validate:"required"`
 	First_name            string `json:"first_name" binding:"required" validate:"required"`
@@ -48,4 +49,9 @@ func RegisterRequestToAccount(RegisterRquest RegisterRequest) (entity.User, erro
 type VerifyOTPRequest struct {
 	Username string `json:"username" binding:"required"`
 	OTP      string `json:"otp" binding:"required"`
+}
+
+type LoginRequest struct{
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
