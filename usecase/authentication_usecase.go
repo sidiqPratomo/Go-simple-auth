@@ -43,6 +43,54 @@ func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authentica
 	}
 }
 
+func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error){
+	// Step 1: Retrieve the OTP and check if it exists and is not expired
+	otpDetails, err := u.userRepository.GetOTPByCode(ctx, verifyOtpLogin.OTP)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, apperror.BadRequestError(errors.New("invalid or expired OTP"))
+		}
+		return nil, apperror.InternalServerError(err)
+	}
+
+	// Step 3: Retrieve user details by OTP's user ID
+	user, err := u.userRepository.FindAccountByUserId(ctx, int(otpDetails.User_id))
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
+	token, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	userDetails := dto.User{
+		Id:              user.Id,
+		Nik:			 user.Nik,
+		Photo:           &user.Photo,
+		FirstName:       user.FirstName,
+		LastName:        user.LastName,
+		Username:        user.Username,
+		Email:           user.Email,
+		Gender:          user.Gender,
+		Address:         user.Address,
+		PhoneNumber:     user.PhoneNumber,
+		EmailVerifiedAt: *user.EmailVerifiedAt,
+		Status:          user.Status,
+		Role:            []string{"admin"}, // Set roles accordingly
+	}
+
+	response := &dto.VerifyLoginUserResponse{
+		User:        userDetails,
+		// Role:        u.userRepository.GetUserRoles(ctx, user.Id),
+		AccessToken: *token,
+		// ExpiresAt:   expiresAt.Format("2006-01-02 15:04:05"),
+	}
+
+	return response, nil
+}
+
 func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error {
 	user, err := u.userRepository.FindAccountByUsername(ctx, loginDTO.Username)
 	if err != nil {
@@ -74,7 +122,6 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 	if err != nil && err != repository.ErrNotFound {
 		return apperror.InternalServerError(err)
 	}
-
 	if existingAccountByEmail != nil && existingAccountByUsername != nil {
 		// Check if the account has not verified the email yet
 		if existingAccountByEmail.EmailVerifiedAt == nil { // Now using nil check for *time.Time

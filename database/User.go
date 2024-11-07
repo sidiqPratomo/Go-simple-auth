@@ -10,6 +10,35 @@ const (
 		SELECT otp FROM users_otps WHERE user_id = ? AND otp = ? AND expired_at > NOW()
 	`
 
+	FindUserOtpsByOTP =`
+		SELECT id, user_id, otp, expired_at from users_otps where otp = ? and expired_at > now() 
+	`
+
+	FindAccountByUserIdQuery = `
+		SELECT 
+			u.id, 
+			u.nik,
+       		COALESCE(u.photo, '') AS photo,
+       		u.first_name,
+			u.last_name,
+			u.username,
+			u.email,
+			COALESCE(u.gender,'') AS gender,
+			COALESCE(u.address, '') AS address,
+			COALESCE(u.phone_number, '') AS phone_number,
+			u.password,
+			CAST(u.email_verified_at AS DATETIME) AS email_verified_at,
+       		ru.roles_id, 
+       		r.name AS role_name, 
+			r.code as role_code,
+			u.status
+		FROM users u
+		JOIN role_users ru ON u.id = ru.users_id
+		JOIN roles r ON ru.roles_id = r.id
+		WHERE u.id LIKE ? 
+		AND u.status = 1;
+	`
+
 	FindAccountByEmailQuery = `
 		SELECT 
 			u.id, 
@@ -25,7 +54,8 @@ const (
 			CAST(u.email_verified_at AS DATETIME) AS email_verified_at,
        		ru.roles_id, 
        		r.name AS role_name, 
-			r.code as role_code
+			r.code as role_code,
+			u.status
 		FROM users u
 		JOIN role_users ru ON u.id = ru.users_id
 		JOIN roles r ON ru.roles_id = r.id
@@ -48,7 +78,8 @@ const (
 			u.email_verified_at,
        		ru.roles_id, 
        		r.name AS role_name, 
-			r.code as role_code
+			r.code as role_code,
+			u.status
 		FROM users u
 		JOIN role_users ru ON u.id = ru.users_id
 		JOIN roles r ON ru.roles_id = r.id
@@ -57,8 +88,8 @@ const (
 	`
 
 	PostOneAccountQuery = `
-    	INSERT INTO users (email, gender, username, password, first_name, last_name, phone_number, created_time)
-    	VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+    	INSERT INTO users (nik, email, gender, username, password, first_name, last_name, phone_number, created_time)
+    	VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
 	`
 
 	PostRoleUserQuery = `

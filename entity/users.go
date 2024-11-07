@@ -6,7 +6,7 @@ import (
 
 type UserOtps struct {
 	Id          int64
-	User_id     string
+	User_id     int64
 	Otp         string
 	Expired_at  *time.Time
 	CreatedBy   string
@@ -18,6 +18,7 @@ type UserOtps struct {
 
 type UserRoles struct {
 	Id              int64
+	Nik				string
 	Photo           string
 	FirstName       string
 	LastName        string
@@ -31,21 +32,23 @@ type UserRoles struct {
 	RoleId          int64
 	RoleName        string
 	RoleCode        string
+	Status			int
 }
 
 type User struct {
 	Id              int64
-	Photo           string
+	Nik				string
+	Photo           *string
 	FirstName       string
 	LastName        string
 	Username        string
 	Email           string
-	Gender          string
-	Address         string
-	PhoneNumber     string
+	Gender          *string
+	Address         *string
+	PhoneNumber     *string
 	Password        string
 	EmailVerifiedAt *time.Time
-	RememberToken   string
+	RememberToken   *string
 	CreatedBy       string
 	UpdatedBy       string
 	CreatedTime     *time.Time
@@ -57,8 +60,8 @@ type Roles struct {
 	Id          int64
 	Name        string
 	Code        string
-	CreatedBy   string
-	UpdatedBy   string
+	CreatedBy   *string
+	UpdatedBy   *string
 	CreatedTime *time.Time
 	UpdatedTime *time.Time
 	Status      int8
@@ -67,9 +70,9 @@ type Roles struct {
 type RoleUsers struct {
 	Id          int64
 	UserId      int
-	RolesId     int
-	CreatedBy   string
-	UpdatedBy   string
+	RolesId     Roles
+	CreatedBy   *string
+	UpdatedBy   *string
 	CreatedTime *time.Time
 	UpdatedTime *time.Time
 	Status      int8

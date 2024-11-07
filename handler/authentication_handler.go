@@ -73,5 +73,5 @@ func (h *AuthenticationHandler) VerifyRegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	dto.ResponseRegister(ctx, nil)
+	dto.ResponseVerifRegister(ctx, nil)
 }
