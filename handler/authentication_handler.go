@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/dto"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/usecase"
@@ -14,6 +16,26 @@ func NewAuthenticationHandler(authenticationUsecase usecase.AuthenticationUsecas
 	return AuthenticationHandler{
 		authenticationUsecase: authenticationUsecase,
 	}
+}
+
+func (h *AuthenticationHandler) VerifyLoginUser(ctx *gin.Context){
+	ctx.Header("Content-Type", "application/json")
+
+	var verifyLoginRequest dto.VerifyUserLoginRequest
+
+	err := ctx.ShouldBindJSON(&verifyLoginRequest)
+	if err != nil{
+		ctx.Error(err)
+		return
+	}
+
+	response, err := h.authenticationUsecase.VerifyUserLogin(ctx, verifyLoginRequest)
+	if err != nil{
+		ctx.Error(err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 func (h *AuthenticationHandler) Login(ctx *gin.Context){

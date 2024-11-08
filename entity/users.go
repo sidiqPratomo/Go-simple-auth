@@ -49,8 +49,8 @@ type User struct {
 	Password        string
 	EmailVerifiedAt *time.Time
 	RememberToken   *string
-	CreatedBy       string
-	UpdatedBy       string
+	CreatedBy       *string
+	UpdatedBy       *string
 	CreatedTime     *time.Time
 	UpdatedTime     *time.Time
 	Status          int8
@@ -62,8 +62,8 @@ type Roles struct {
 	Code        string
 	CreatedBy   *string
 	UpdatedBy   *string
-	CreatedTime *time.Time
-	UpdatedTime *time.Time
+	CreatedTime *string
+	UpdatedTime *string
 	Status      int8
 }
 
@@ -73,8 +73,8 @@ type RoleUsers struct {
 	RolesId     Roles
 	CreatedBy   *string
 	UpdatedBy   *string
-	CreatedTime *time.Time
-	UpdatedTime *time.Time
+	CreatedTime *string
+	UpdatedTime *string
 	Status      int8
 }
 
@@ -86,8 +86,8 @@ type Priveleges struct {
 	Action      string
 	Method      string
 	Uri         string
-	CreatedBy   string
-	UpdatedBy   string
+	CreatedBy   *string
+	UpdatedBy   *string
 	CreatedTime *time.Time
 	UpdatedTime *time.Time
 	Status      int8
@@ -99,9 +99,9 @@ type RolePrivileges struct {
 	Action      string
 	Method      string
 	Uri         string
-	CreatedBy   string
-	UpdatedBy   string
-	CreatedTime *time.Time
-	UpdatedTime *time.Time
+	CreatedBy   *string
+	UpdatedBy   *string
+	CreatedTime *string
+	UpdatedTime *string
 	Status      int8
 }

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
@@ -15,6 +16,7 @@ type AuthenticationUsecase interface {
 	RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error
 	VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error
 	LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error
+	VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error)
 }
 
 type authenticationUsecaseImpl struct {
@@ -44,26 +46,41 @@ func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authentica
 }
 
 func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error){
-	// Step 1: Retrieve the OTP and check if it exists and is not expired
-	otpDetails, err := u.userRepository.GetOTPByCode(ctx, verifyOtpLogin.OTP)
+	fmt.Println("masuk:::::::::::::::::")
+	accountUsername, err :=u.userRepository.FindAccountByUsername(ctx, verifyOtpLogin.Username)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+	if accountUsername.EmailVerifiedAt == nil{
+		return nil, apperror.NewAppError(400, err, "User Not verified")
+	}
+	fmt.Println("LOLOs1:::::::::::::::::")
+	otpDetails, err := u.userRepository.GetOTPByCode(ctx, verifyOtpLogin.OTP, int(accountUsername.Id))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, apperror.BadRequestError(errors.New("invalid or expired OTP"))
 		}
 		return nil, apperror.InternalServerError(err)
 	}
-
-	// Step 3: Retrieve user details by OTP's user ID
+	fmt.Println("LOLOs2:::::::::::::::::")
 	user, err := u.userRepository.FindAccountByUserId(ctx, int(otpDetails.User_id))
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
 	}
-
+	fmt.Println("LOLOs2:::::::::::::::::")
 	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
-	token, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
+	token, expired, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
 	}
+	fmt.Println("LOLOs3:::::::::::::::::")
+	roles, privileges, err := u.userRepository.GetUserRoles(ctx, user.Id)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+	fmt.Println("LOLOS4::::::::::::::::::::::")
+	roleDTOs := dto.MapRolesToDTOs(roles)
+	privilegeDTOs := dto.MapPrivilegesToDTOs(privileges)
 
 	userDetails := dto.User{
 		Id:              user.Id,
@@ -78,14 +95,20 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 		PhoneNumber:     user.PhoneNumber,
 		EmailVerifiedAt: *user.EmailVerifiedAt,
 		Status:          user.Status,
-		Role:            []string{"admin"}, // Set roles accordingly
+		Role:            []string{user.RoleName}, // Set roles accordingly
+		Roles:			 roleDTOs,
+	}
+
+	roleResponse := dto.Role{
+		Privileges: privilegeDTOs,
+		Role:       roleDTOs,
 	}
 
 	response := &dto.VerifyLoginUserResponse{
 		User:        userDetails,
-		// Role:        u.userRepository.GetUserRoles(ctx, user.Id),
+		Role:        roleResponse,
 		AccessToken: *token,
-		// ExpiresAt:   expiresAt.Format("2006-01-02 15:04:05"),
+		ExpiresAt:   *expired,
 	}
 
 	return response, nil

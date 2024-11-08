@@ -16,7 +16,7 @@ type JwtCustomClaims struct {
 }
 
 type TokenAuthentication interface {
-	CreateAndSign(customClaims JwtCustomClaims, secretKey string) (*string, error)
+	CreateAndSign(customClaims JwtCustomClaims, secretKey string) (*string, *string, error)
 	ParseAndVerify(signed string, secretKey string) (*JwtCustomClaims, error)
 }
 
@@ -25,25 +25,29 @@ type JwtAuthentication struct {
 	Method *jwt.SigningMethodHMAC
 }
 
-func (ja JwtAuthentication) CreateAndSign(customClaims JwtCustomClaims, secretKey string) (*string, error) {
+func (ja JwtAuthentication) CreateAndSign(customClaims JwtCustomClaims, secretKey string) (*string, *string, error) {
 	customClaimsJsonBytes, err := json.Marshal(customClaims)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	expiredAt := time.Now().Add(time.Duration(customClaims.TokenDuration) * time.Minute).Unix()
 
 	token := jwt.NewWithClaims(ja.Method, jwt.MapClaims{
 		"iss":  ja.Config.Issuer,
 		"iat":  time.Now(),
-		"exp":  time.Now().Add(time.Duration(customClaims.TokenDuration) * time.Minute).Unix(),
+		"exp":  expiredAt,
 		"data": string(customClaimsJsonBytes),
 	})
 
+	expired := time.Now().Add(time.Duration(customClaims.TokenDuration) * time.Minute).Format("2006-01-02 15:04:05")
+
 	signed, err := token.SignedString([]byte(secretKey))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &signed, nil
+	return &signed, &expired, nil
 }
 
 func (ja JwtAuthentication) ParseAndVerify(signed string, secretKey string) (*JwtCustomClaims, error) {

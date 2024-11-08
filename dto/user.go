@@ -59,6 +59,7 @@ type LoginRequest struct {
 }
 
 type VerifyUserLoginRequest struct {
+	Username string `json:"username" binding:"required"`
 	OTP string `json:"otp" binding:"required"`
 }
 
@@ -76,8 +77,8 @@ type User struct {
 	EmailVerifiedAt time.Time  `json:"email_verified_at"`
 	CreatedBy       *string    `json:"created_by"`
 	UpdatedBy       *string    `json:"updated_by"`
-	CreatedTime     time.Time  `json:"created_time"`
-	UpdatedTime     time.Time  `json:"updated_time"`
+	CreatedTime     *time.Time  `json:"created_time"`
+	UpdatedTime     *time.Time  `json:"updated_time"`
 	Status          int        `json:"status"`
 	Role            []string   `json:"role"`
 	Roles           []UserRole `json:"roles"`
@@ -90,8 +91,8 @@ type UserRole struct {
 	RolesId     RoleDetail `json:"roles_id"`
 	CreatedBy   *string    `json:"created_by"`
 	UpdatedBy   *string    `json:"updated_by"`
-	CreatedTime time.Time  `json:"created_time"`
-	UpdatedTime time.Time  `json:"updated_time"`
+	CreatedTime *string  `json:"created_time"`
+	UpdatedTime *string  `json:"updated_time"`
 	Status      int        `json:"status"`
 }
 
@@ -102,8 +103,8 @@ type RoleDetail struct {
 	Code        string    `json:"code"`
 	CreatedBy   *string   `json:"created_by"`
 	UpdatedBy   *string   `json:"updated_by"`
-	CreatedTime time.Time `json:"created_time"`
-	UpdatedTime time.Time `json:"updated_time"`
+	CreatedTime *time.Time `json:"created_time"`
+	UpdatedTime *time.Time `json:"updated_time"`
 	Status      int       `json:"status"`
 }
 
@@ -116,8 +117,8 @@ type Privilege struct {
 	Method      string    `json:"method"`
 	CreatedBy   *string   `json:"created_by"`
 	UpdatedBy   *string   `json:"updated_by"`
-	CreatedTime time.Time `json:"created_time"`
-	UpdatedTime time.Time `json:"updated_time"`
+	CreatedTime *time.Time `json:"created_time"`
+	UpdatedTime *time.Time `json:"updated_time"`
 	Status      int       `json:"status"`
 }
 
@@ -133,4 +134,45 @@ type VerifyLoginUserResponse struct {
 	Role        Role   `json:"role"`
 	AccessToken string `json:"access_token"`
 	ExpiresAt   string `json:"expires_at"`
+}
+
+func MapRolesToDTOs(roles []entity.RoleUsers) []UserRole {
+	var roleDTOs []UserRole
+	for _, role := range roles {
+		roleDTOs = append(roleDTOs, UserRole{
+			Id:      role.Id,
+			UsersId:  int64(role.UserId),
+			RolesId: RoleDetail{
+				Id:        role.RolesId.Id,
+				Name:      role.RolesId.Name,
+				Code:      role.RolesId.Code,
+				CreatedBy: role.RolesId.CreatedBy,
+				UpdatedBy: role.RolesId.UpdatedBy,
+				Status:    int(role.RolesId.Status),
+			},
+			CreatedBy:  role.CreatedBy,
+			UpdatedBy:  role.UpdatedBy,
+			CreatedTime: role.CreatedTime,
+			UpdatedTime: role.UpdatedTime,
+			Status:     int(role.Status),
+		})
+	}
+	return roleDTOs
+}
+
+func MapPrivilegesToDTOs(privileges []entity.RolePrivileges) []Privilege {
+	var privilegeDTOs []Privilege
+	for _, priv := range privileges {
+		privilegeDTOs = append(privilegeDTOs, Privilege{
+			Id:        int64(priv.Id),
+			Role:      int64(priv.Role),
+			Action:    priv.Action,
+			Uri:       priv.Uri,
+			Method:    priv.Method,
+			CreatedBy: priv.CreatedBy,
+			UpdatedBy: priv.UpdatedBy,
+			Status:    int(priv.Status),
+		})
+	}
+	return privilegeDTOs
 }

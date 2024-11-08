@@ -1,6 +1,22 @@
 package database
 
 const (
+	FindPrivilegeQuery = `
+		SELECT rp.id, rp.role, rp.action, rp.uri, rp.method, rp.created_by ,rp.updated_by , rp.created_time , rp.updated_time, rp.status 
+		FROM role_privileges rp
+		WHERE rp.role IN (SELECT roles_id FROM role_users WHERE users_id = ?);
+	`
+
+	FindRoleQuery = `
+		SELECT 
+		ru.id, ru.users_id, 
+		r.id, r.name, r.code, r.created_by, r.updated_by, r.created_time, r.updated_time, r.status, 
+		ru.created_by, ru.updated_by, ru.created_time, ru.updated_time, ru.status
+		FROM role_users ru
+		JOIN roles r ON ru.roles_id = r.id
+		WHERE ru.users_id = ?
+	`
+
 	InserOtpQuery = `
 		INSERT INTO users_otps (user_id, otp, expired_at) 
 		VALUES (?, ?, ?)
@@ -11,7 +27,7 @@ const (
 	`
 
 	FindUserOtpsByOTP =`
-		SELECT id, user_id, otp, expired_at from users_otps where otp = ? and expired_at > now() 
+		SELECT id, user_id, otp, expired_at from users_otps where otp = ? and user_id = ? and expired_at > now() 
 	`
 
 	FindAccountByUserIdQuery = `

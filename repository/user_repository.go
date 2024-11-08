@@ -20,8 +20,9 @@ type UserRepository interface {
 	VerifyOTP(ctx context.Context, userId int, otp string) (bool, error)
 	UpdateUserVerificationStatus(ctx context.Context, userId int) error
 	CreateRoleUser(ctx context.Context, userId int)  error
-	GetOTPByCode(ctx context.Context, otp string) (*entity.UserOtps, error)
+	GetOTPByCode(ctx context.Context, otp string, userId int) (*entity.UserOtps, error)
 	FindAccountByUserId(ctx context.Context, userId int) (*entity.UserRoles, error)
+	GetUserRoles(ctx context.Context, userId int64) ([]entity.RoleUsers, []entity.RolePrivileges, error) 
 }
 
 type userRepositoryDB struct {
@@ -38,14 +39,7 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 	var roles []entity.RoleUsers
 	var privileges []entity.RolePrivileges
 
-	// Retrieve roles associated with the user
-	roleQuery := `
-		SELECT ru.id, ru.users_id, r.id, r.name, r.code, r.created_by, r.updated_by, r.created_time, r.updated_time, r.status, ru.created_by, ru.updated_by, ru.created_time, ru.updated_time, ru.status
-		FROM role_users ru
-		JOIN roles r ON ru.roles_id = r.id
-		WHERE ru.users_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, roleQuery, userId)
+	rows, err := r.db.QueryContext(ctx, database.FindRoleQuery, userId)
 	if err != nil {
 		return nil,nil, err
 	}
@@ -55,7 +49,8 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 		var roleUser entity.RoleUsers
 		if err := rows.Scan(
 			&roleUser.Id, 
-			&roleUser.UserId, 
+			&roleUser.UserId,
+			&roleUser.RolesId.Id, 
 			&roleUser.RolesId.Name, 
 			&roleUser.RolesId.Code, 
 			&roleUser.RolesId.CreatedBy,
@@ -72,14 +67,8 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 		}
 		roles = append(roles, roleUser)
 	}
-
-	// Retrieve privileges associated with each role
-	privilegeQuery := `
-		SELECT rp.id, rp.role, rp.action, rp.uri, rp.method, rp.created_by ,rp.updated_by , rp.created_time , rp.updated_time, rp.status 
-		FROM role_privileges rp
-		WHERE rp.role IN (SELECT roles_id FROM role_users WHERE users_id = 2);
-	`
-	privRows, err := r.db.QueryContext(ctx, privilegeQuery, userId)
+	
+	privRows, err := r.db.QueryContext(ctx, database.FindPrivilegeQuery, userId)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -107,14 +96,17 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 }
 
 
-func (r *userRepositoryDB) GetOTPByCode(ctx context.Context, otp string) (*entity.UserOtps, error){
+func (r *userRepositoryDB) GetOTPByCode(ctx context.Context, otp string, userId int) (*entity.UserOtps, error){
 	var detailUserOtps entity.UserOtps
-	err := r.db.QueryRowContext(ctx, database.FindUserOtpsByOTP, otp).Scan(
+	err := r.db.QueryRowContext(ctx, database.FindUserOtpsByOTP, otp, userId).Scan(
 		&detailUserOtps.Id, 
 		&detailUserOtps.User_id, 
 		&detailUserOtps.Otp, 
 		&detailUserOtps.Expired_at)
 	if err != nil {
+		if err == sql.ErrNoRows{
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &detailUserOtps, nil
