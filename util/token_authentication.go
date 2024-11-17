@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -31,11 +32,19 @@ func (ja JwtAuthentication) CreateAndSign(customClaims JwtCustomClaims, secretKe
 		return nil, nil, err
 	}
 
+	now := time.Now()
+
+	seconds := now.Unix()
+	nanoseconds := now.UnixNano() % 1e9
+
+	decimalTime := float64(seconds) + float64(nanoseconds)/1e9
+
 	expiredAt := time.Now().Add(time.Duration(customClaims.TokenDuration) * time.Minute).Unix()
 
 	token := jwt.NewWithClaims(ja.Method, jwt.MapClaims{
+		"jti":  generateJTI(),
 		"iss":  ja.Config.Issuer,
-		"iat":  time.Now(),
+		"iat":  decimalTime,
 		"exp":  expiredAt,
 		"data": string(customClaimsJsonBytes),
 	})
@@ -48,6 +57,10 @@ func (ja JwtAuthentication) CreateAndSign(customClaims JwtCustomClaims, secretKe
 	}
 
 	return &signed, &expired, nil
+}
+
+func generateJTI() string {
+	return fmt.Sprintf("%x", time.Now().UnixNano()) // Menghasilkan ID unik berbasis waktu
 }
 
 func (ja JwtAuthentication) ParseAndVerify(signed string, secretKey string) (*JwtCustomClaims, error) {

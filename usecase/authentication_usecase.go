@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
@@ -46,7 +45,7 @@ func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authentica
 }
 
 func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error){
-	fmt.Println("masuk:::::::::::::::::")
+
 	accountUsername, err :=u.userRepository.FindAccountByUsername(ctx, verifyOtpLogin.Username)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
@@ -54,7 +53,7 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 	if accountUsername.EmailVerifiedAt == nil{
 		return nil, apperror.NewAppError(400, err, "User Not verified")
 	}
-	fmt.Println("LOLOs1:::::::::::::::::")
+
 	otpDetails, err := u.userRepository.GetOTPByCode(ctx, verifyOtpLogin.OTP, int(accountUsername.Id))
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -62,23 +61,23 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 		}
 		return nil, apperror.InternalServerError(err)
 	}
-	fmt.Println("LOLOs2:::::::::::::::::")
+
 	user, err := u.userRepository.FindAccountByUserId(ctx, int(otpDetails.User_id))
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
 	}
-	fmt.Println("LOLOs2:::::::::::::::::")
+
 	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
 	token, expired, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
 	}
-	fmt.Println("LOLOs3:::::::::::::::::")
+
 	roles, privileges, err := u.userRepository.GetUserRoles(ctx, user.Id)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
 	}
-	fmt.Println("LOLOS4::::::::::::::::::::::")
+
 	roleDTOs := dto.MapRolesToDTOs(roles)
 	privilegeDTOs := dto.MapPrivilegesToDTOs(privileges)
 
