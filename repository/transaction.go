@@ -17,6 +17,7 @@ type Transaction interface {
 	Commit() error
 	BeginTx() (Transaction, error)
 	UserRepository() UserRepository
+	RefreshTokenRepository() RefreshTokenRepository
 }
 
 type SqlTransaction struct {
@@ -45,6 +46,12 @@ func (s *SqlTransaction) Commit() error {
 
 func (s *SqlTransaction) UserRepository() UserRepository {
 	return &userRepositoryDB{
+		db: s.tx,
+	}
+}
+
+func (s *SqlTransaction) RefreshTokenRepository() RefreshTokenRepository {
+	return &refreshTokenRepositoryDB{
 		db: s.tx,
 	}
 }

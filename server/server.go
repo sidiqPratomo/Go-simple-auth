@@ -35,7 +35,7 @@ func newRouter(h routerOpts, u utilOpts, config *config.Config, log *logrus.Logg
 		gin.Recovery(),
 	)
 
-	// authMiddleware := middleware.AuthMiddleware(u.JwtHelper, config)
+	authMiddleware := middleware.AuthMiddleware(u.JwtHelper, config)
 
 	// userAuthorizationMiddleware := middleware.UserAuthorizationMiddleware
 	// doctorAuthorizationMiddleware := middleware.DoctorAuthorizationMiddleware
@@ -47,7 +47,7 @@ func newRouter(h routerOpts, u utilOpts, config *config.Config, log *logrus.Logg
 
 	api := router.Group("/api/v1")
 	{
-		authenticationRouting(api, h.Authentication)
+		authenticationRouting(api, h.Authentication, authMiddleware)
 	}
 
 	return router
@@ -62,11 +62,12 @@ func corsRouting(router *gin.Engine, configCors cors.Config) {
 	router.Use(cors.New(configCors))
 }
 
-func authenticationRouting(router *gin.RouterGroup, handler *handler.AuthenticationHandler) {
+func authenticationRouting(router *gin.RouterGroup, handler *handler.AuthenticationHandler, authMiddleware gin.HandlerFunc) {
 	authRouter:= router.Group("/auth")
 
 	authRouter.POST("/register-user", handler.RegisterUser)
 	authRouter.POST("/verify-registration", handler.VerifyRegisterUser)
 	authRouter.POST("/signin", handler.Login)
 	authRouter.POST("/verify-otp", handler.VerifyLoginUser)
+	authRouter.POST("/refresh", authMiddleware,  handler.RefreshToken)
 }

@@ -18,6 +18,25 @@ func NewAuthenticationHandler(authenticationUsecase usecase.AuthenticationUsecas
 	}
 }
 
+func (h *AuthenticationHandler) RefreshToken(ctx *gin.Context) {
+	ctx.Header("Content-Type", "application/json")
+	var accessTokenRequest dto.AccessTokenRequest
+	err := ctx.ShouldBindJSON(&accessTokenRequest)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	accessToken, err := h.authenticationUsecase.GetNewAccessToken(ctx.Request.Context(), accessTokenRequest.RefreshToken)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	accessTokenRes := dto.ConvertAccessTokenToResponse(*accessToken)
+	ctx.JSON(http.StatusOK, accessTokenRes)
+}
+
 func (h *AuthenticationHandler) VerifyLoginUser(ctx *gin.Context){
 	ctx.Header("Content-Type", "application/json")
 

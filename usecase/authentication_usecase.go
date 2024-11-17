@@ -15,42 +15,94 @@ type AuthenticationUsecase interface {
 	RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error
 	VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error
 	LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error
+	GetNewAccessToken(ctx context.Context, refreshToken string) (*string, error)
 	VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error)
 }
 
 type authenticationUsecaseImpl struct {
-	userRepository repository.UserRepository
-	emailHelper    util.EmailHelper
-	transaction    repository.Transaction
-	hashHelper     util.HashHelperIntf
-	JwtHelper      util.JwtAuthentication
+	userRepository         repository.UserRepository
+	emailHelper            util.EmailHelper
+	transaction            repository.Transaction
+	hashHelper             util.HashHelperIntf
+	JwtHelper              util.JwtAuthentication
+	refreshTokenRepository repository.RefreshTokenRepository
 }
 
 type AuthenticationUsecaseImplOpts struct {
-	UserRepository repository.UserRepository
-	Transaction    repository.Transaction
-	HashHelper     util.HashHelperIntf
-	JwtHelper      util.JwtAuthentication
-	EmailHelper    util.EmailHelper
+	UserRepository         repository.UserRepository
+	Transaction            repository.Transaction
+	HashHelper             util.HashHelperIntf
+	JwtHelper              util.JwtAuthentication
+	EmailHelper            util.EmailHelper
+	RefreshTokenRepository repository.RefreshTokenRepository
 }
 
 func NewAuthenticationUsecaseImpl(opts AuthenticationUsecaseImplOpts) authenticationUsecaseImpl {
 	return authenticationUsecaseImpl{
-		userRepository: opts.UserRepository,
-		transaction:    opts.Transaction,
-		emailHelper:    opts.EmailHelper,
-		JwtHelper:      opts.JwtHelper,
-		hashHelper:     opts.HashHelper,
+		userRepository:         opts.UserRepository,
+		transaction:            opts.Transaction,
+		emailHelper:            opts.EmailHelper,
+		JwtHelper:              opts.JwtHelper,
+		hashHelper:             opts.HashHelper,
+		refreshTokenRepository: opts.RefreshTokenRepository,
 	}
 }
 
-func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error){
-
-	accountUsername, err :=u.userRepository.FindAccountByUsername(ctx, verifyOtpLogin.Username)
+func (u *authenticationUsecaseImpl) GetNewAccessToken(ctx context.Context, refreshToken string) (*string, error) {
+	claim, err := u.JwtHelper.ParseAndVerify(refreshToken, u.JwtHelper.Config.AccessSecret)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
 	}
-	if accountUsername.EmailVerifiedAt == nil{
+
+	refreshToken, err = u.refreshTokenRepository.FindOneCode(ctx, refreshToken)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+	if refreshToken == "" {
+		return nil, apperror.RefreshTokenExpiredError()
+	}
+
+	claim.TokenDuration = 15
+	accessToken, _, err := u.JwtHelper.CreateAndSign(*claim, u.JwtHelper.Config.AccessSecret)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	tx, err := u.transaction.BeginTx()
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	refreshTokenRepo := tx.RefreshTokenRepository()
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+
+		tx.Commit()
+	}()
+
+	err = refreshTokenRepo.InvalidateCodes(ctx, claim.UserId)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	err = refreshTokenRepo.PostOneCode(ctx, claim.UserId, *accessToken)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	return accessToken, nil
+}
+
+func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error) {
+
+	accountUsername, err := u.userRepository.FindAccountByUsername(ctx, verifyOtpLogin.Username)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+	if accountUsername.EmailVerifiedAt == nil {
 		return nil, apperror.NewAppError(400, err, "User Not verified")
 	}
 
@@ -78,12 +130,37 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 		return nil, apperror.InternalServerError(err)
 	}
 
+	tx, err := u.transaction.BeginTx()
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	refreshTokenRepo := tx.RefreshTokenRepository()
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+
+		tx.Commit()
+	}()
+
+	err = refreshTokenRepo.InvalidateCodes(ctx, accountUsername.Id)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	err = refreshTokenRepo.PostOneCode(ctx, accountUsername.Id, *token)
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
 	roleDTOs := dto.MapRolesToDTOs(roles)
 	privilegeDTOs := dto.MapPrivilegesToDTOs(privileges)
 
 	userDetails := dto.User{
 		Id:              user.Id,
-		Nik:			 user.Nik,
+		Nik:             user.Nik,
 		Photo:           &user.Photo,
 		FirstName:       user.FirstName,
 		LastName:        user.LastName,
@@ -95,7 +172,7 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 		EmailVerifiedAt: *user.EmailVerifiedAt,
 		Status:          user.Status,
 		Role:            []string{user.RoleName}, // Set roles accordingly
-		Roles:			 roleDTOs,
+		Roles:           roleDTOs,
 	}
 
 	roleResponse := dto.Role{
@@ -122,13 +199,13 @@ func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.
 		return apperror.InternalServerError(err)
 	}
 
-	isPasswordValid,err := u.hashHelper.CheckPassword(loginDTO.Password,[]byte(user.Password))
+	isPasswordValid, err := u.hashHelper.CheckPassword(loginDTO.Password, []byte(user.Password))
 	if !isPasswordValid {
 		return apperror.WrongPasswordError(err)
 	}
 	accountId64 := int(user.Id)
 
-	if err := u.createAndSendOTP(ctx, &accountId64, user.Email);err !=nil{
+	if err := u.createAndSendOTP(ctx, &accountId64, user.Email); err != nil {
 		return apperror.InternalServerError(err)
 	}
 
@@ -160,7 +237,7 @@ func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDT
 	}
 
 	account, err := dto.RegisterRequestToAccount(registerDTO)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -263,7 +340,7 @@ func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, veri
 	// Step 1: Find user by Username
 	//FIX Find By OTP and username and expired_at >= now()
 	account, err := u.userRepository.FindAccountByUsername(ctx, verifyDTO.Username)
-	if err != nil{
+	if err != nil {
 		return apperror.InternalServerError(err)
 	}
 
@@ -276,11 +353,11 @@ func (u *authenticationUsecaseImpl) VerifyUserRegister(ctx context.Context, veri
 		return apperror.BadRequestError(errors.New("invalid or expired OTP"))
 	}
 
-	tx, err :=u.transaction.BeginTx()
-	if err != nil{
+	tx, err := u.transaction.BeginTx()
+	if err != nil {
 		return apperror.InternalServerError(err)
 	}
-	defer func(){
+	defer func() {
 		if err != nil {
 			tx.Rollback()
 		}
