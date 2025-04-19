@@ -170,7 +170,8 @@ func (r *userRepositoryDB) FindAccountByEmail(ctx context.Context, email string)
 func (r *userRepositoryDB) FindAccountByUsername(ctx context.Context, username string) (*entity.UserRoles, error) {
 	var account entity.UserRoles
 	err := r.db.QueryRowContext(ctx, database.FindAccountByUsernameQuery, username).Scan(
-		&account.Id, 
+		&account.Id,
+		&account.StatusOTP, 
 		&account.Photo, 
 		&account.FirstName, 
 		&account.LastName, 

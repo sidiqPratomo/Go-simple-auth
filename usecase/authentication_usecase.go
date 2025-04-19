@@ -14,7 +14,7 @@ import (
 type AuthenticationUsecase interface {
 	RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error
 	VerifyUserRegister(ctx context.Context, verifyDTO dto.VerifyOTPRequest) error
-	LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error
+	LoginUser(ctx context.Context, loginDTO dto.LoginRequest) (*dto.LoginResponse, error)
 	GetNewAccessToken(ctx context.Context, refreshToken string) (*string, error)
 	VerifyUserLogin(ctx context.Context, verifyOtpLogin dto.VerifyUserLoginRequest) (*dto.VerifyLoginUserResponse, error)
 }
@@ -190,26 +190,80 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 	return response, nil
 }
 
-func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error {
+// func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error {
+// 	user, err := u.userRepository.FindAccountByUsername(ctx, loginDTO.Username)
+// 	if err != nil {
+// 		if err == repository.ErrNotFound {
+// 			return apperror.BadRequestError(errors.New("username not found"))
+// 		}
+// 		return apperror.InternalServerError(err)
+// 	}
+
+// 	isPasswordValid, err := u.hashHelper.CheckPassword(loginDTO.Password, []byte(user.Password))
+// 	if !isPasswordValid {
+// 		return apperror.WrongPasswordError(err)
+// 	}
+// 	accountId64 := int(user.Id)
+
+// 	if err := u.createAndSendOTP(ctx, &accountId64, user.Email); err != nil {
+// 		return apperror.InternalServerError(err)
+// 	}
+
+// 	return nil
+// }
+
+func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := u.userRepository.FindAccountByUsername(ctx, loginDTO.Username)
 	if err != nil {
 		if err == repository.ErrNotFound {
-			return apperror.BadRequestError(errors.New("username not found"))
+			return nil, apperror.BadRequestError(errors.New("username not found"))
 		}
-		return apperror.InternalServerError(err)
+		return nil, apperror.InternalServerError(err)
 	}
 
 	isPasswordValid, err := u.hashHelper.CheckPassword(loginDTO.Password, []byte(user.Password))
 	if !isPasswordValid {
-		return apperror.WrongPasswordError(err)
+		return nil, apperror.WrongPasswordError(err)
 	}
+
+	// Jika status OTP = 0, langsung login dan kirim token
+	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
+	if user.StatusOTP == 0 {
+		accessToken, expiresAt, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
+		if err != nil {
+			return nil, apperror.InternalServerError(err)
+		}
+
+		roles, privileges, err := u.userRepository.GetUserRoles(ctx, user.Id)
+		if err != nil {
+			return nil, apperror.InternalServerError(err)
+		}
+		roleDTOs := dto.MapRolesToDTOs(roles)
+		privilegeDTOs := dto.MapPrivilegesToDTOs(privileges)
+
+		loginResp := &dto.LoginResponse{
+			User: dto.User{
+				Id:       user.Id,
+				Email:    user.Email,
+				Username: user.Username,
+			},
+			Role: dto.Role{
+				Role:       roleDTOs,
+				Privileges: privilegeDTOs,
+			},
+			AccessToken: *accessToken,
+			ExpiresAt:   *expiresAt,
+		}
+		return loginResp, nil
+	}
+
+	// Jika status OTP = 1, kirim OTP ke email
 	accountId64 := int(user.Id)
-
 	if err := u.createAndSendOTP(ctx, &accountId64, user.Email); err != nil {
-		return apperror.InternalServerError(err)
+		return nil, apperror.InternalServerError(err)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (u *authenticationUsecaseImpl) RegisterUser(ctx context.Context, registerDTO dto.RegisterRequest) error {

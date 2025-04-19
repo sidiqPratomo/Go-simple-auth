@@ -82,6 +82,7 @@ const (
 	FindAccountByUsernameQuery = `
 		SELECT 
 			u.id, 
+			u.status_otp,
        		COALESCE(u.photo, '') AS photo,
        		u.first_name,
 			u.last_name,

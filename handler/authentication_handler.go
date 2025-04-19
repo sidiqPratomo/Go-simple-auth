@@ -68,13 +68,13 @@ func (h *AuthenticationHandler) Login(ctx *gin.Context){
 		return
 	}
 
-	err = h.authenticationUsecase.LoginUser(ctx, loginRequest)
+	response, err := h.authenticationUsecase.LoginUser(ctx, loginRequest)
 	if err != nil{
 		ctx.Error(err)
 		return
 	}
 
-	dto.ResponseLogin(ctx, nil)
+	ctx.JSON(http.StatusOK, response)
 }
 
 func (h *AuthenticationHandler) RegisterUser(ctx *gin.Context) {

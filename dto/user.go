@@ -136,6 +136,13 @@ type VerifyLoginUserResponse struct {
 	ExpiresAt   string `json:"expires_at"`
 }
 
+type LoginResponse struct {
+	User        User   `json:"user"`
+	Role        Role   `json:"role"`
+	AccessToken string `json:"access_token"`
+	ExpiresAt   string `json:"expires_at"`
+}
+
 func MapRolesToDTOs(roles []entity.RoleUsers) []UserRole {
 	var roleDTOs []UserRole
 	for _, role := range roles {

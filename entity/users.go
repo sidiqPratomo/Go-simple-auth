@@ -18,6 +18,7 @@ type UserOtps struct {
 
 type UserRoles struct {
 	Id              int64
+	StatusOTP		int8
 	Nik				string
 	Photo           string
 	FirstName       string
@@ -37,6 +38,7 @@ type UserRoles struct {
 
 type User struct {
 	Id              int64
+	StatusOTP		int8
 	Nik				string
 	Photo           *string
 	FirstName       string
