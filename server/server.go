@@ -13,6 +13,7 @@ import (
 
 type routerOpts struct {
 	Authentication     *handler.AuthenticationHandler
+	User 			   *handler.UserHandler
 }
 
 type utilOpts struct {
@@ -48,6 +49,7 @@ func newRouter(h routerOpts, u utilOpts, config *config.Config, log *logrus.Logg
 	api := router.Group("/api/v1")
 	{
 		authenticationRouting(api, h.Authentication, authMiddleware)
+		userRouting(api, h.User, authMiddleware)
 	}
 
 	return router
@@ -70,4 +72,10 @@ func authenticationRouting(router *gin.RouterGroup, handler *handler.Authenticat
 	authRouter.POST("/signin", handler.Login)
 	authRouter.POST("/verify-otp", handler.VerifyLoginUser)
 	authRouter.POST("/refresh", authMiddleware,  handler.RefreshToken)
+}
+
+func userRouting(router *gin.RouterGroup, handler *handler.UserHandler, authMiddleware gin.HandlerFunc) {
+	authRouter:= router.Group("/users")
+
+	authRouter.GET("/",authMiddleware, handler.IndexUser)
 }

@@ -37,7 +37,7 @@ func RegisterRequestToAccount(RegisterRquest RegisterRequest) (entity.User, erro
 		return entity.User{}, apperror.InvalidNameError(errors.New("invalid name"))
 	}
 	return entity.User{
-		Nik:         RegisterRquest.Nik,
+		Nik:         &RegisterRquest.Nik,
 		Email:       RegisterRquest.Email,
 		Username:    RegisterRquest.Username,
 		FirstName:   RegisterRquest.First_name,
@@ -65,16 +65,16 @@ type VerifyUserLoginRequest struct {
 
 type User struct {
 	Id              int64      `json:"id"`
-	Nik				string	   `json:"nik"`
+	Nik				*string	   `json:"nik"`
 	Photo           *string    `json:"photo"`
 	FirstName       string     `json:"first_name"`
 	LastName        string     `json:"last_name"`
 	Username        string     `json:"username"`
 	Email           string     `json:"email"`
-	Gender          string     `json:"gender"`
-	Address         string     `json:"address"`
-	PhoneNumber     string     `json:"phone_number"`
-	EmailVerifiedAt time.Time  `json:"email_verified_at"`
+	Gender          *string     `json:"gender"`
+	Address         *string     `json:"address"`
+	PhoneNumber     *string     `json:"phone_number"`
+	EmailVerifiedAt *time.Time  `json:"email_verified_at"`
 	CreatedBy       *string    `json:"created_by"`
 	UpdatedBy       *string    `json:"updated_by"`
 	CreatedTime     *time.Time  `json:"created_time"`
@@ -82,6 +82,63 @@ type User struct {
 	Status          int        `json:"status"`
 	Role            []string   `json:"role"`
 	Roles           []UserRole `json:"roles"`
+}
+
+type UserDetail struct {
+	Id              int64      `json:"id"`
+	Nik				*string	   `json:"nik"`
+	Photo           *string    `json:"photo"`
+	FirstName       string     `json:"first_name"`
+	LastName        string     `json:"last_name"`
+	Username        string     `json:"username"`
+	Email           string     `json:"email"`
+	Gender          *string     `json:"gender"`
+	Address         *string     `json:"address"`
+	PhoneNumber     *string     `json:"phone_number"`
+	EmailVerifiedAt *time.Time  `json:"email_verified_at"`
+	CreatedBy       *string    `json:"created_by"`
+	UpdatedBy       *string    `json:"updated_by"`
+	CreatedTime     *time.Time  `json:"created_time"`
+	UpdatedTime     *time.Time  `json:"updated_time"`
+	Status          int        `json:"status"`
+}
+
+type UserQueryParams struct{
+	Limit int32
+	Offset int32
+	SortBy string
+	SortOrder string
+	Status *int8
+}
+
+type Users struct{
+	Users []User `json:"users"`
+}
+
+type ResponseIndex[T any] struct {
+	Status  bool   `json:"status"`
+	Data    T      `json:"data"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+type PagedResult[T any] struct {
+	Result []T `json:"result"`
+	Count  int `json:"count"`
+}
+
+func MapDTOQuerytoEntity(params UserQueryParams) entity.UserQuery {
+	var status *int
+	if params.Status != nil {
+		converted := int(*params.Status)
+		status = &converted
+	}
+	return entity.UserQuery{
+		Limit:     int(params.Limit),
+		Offset:    int(params.Offset),
+		SortBy:    params.SortBy,
+		Status:    status,
+	}
 }
 
 // UserRole represents the structure of roles associated with the user.

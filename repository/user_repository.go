@@ -12,6 +12,7 @@ import (
 )
 
 type UserRepository interface {
+	FindAll(ctx context.Context, params entity.UserQuery) ([]entity.User, int, error)
 	PostOneUser(ctx context.Context, account entity.User) (*int, error)
 	GetAllUser(ctx context.Context, user entity.User) ([]entity.User, error)
 	FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error)
@@ -34,6 +35,61 @@ func NewUserRepositoryDB(db *sql.DB) userRepositoryDB {
 		db: db,
 	}
 }
+
+// repository/user_repository_impl.go
+func (r *userRepositoryDB) FindAll(ctx context.Context, params entity.UserQuery) ([]entity.User, int, error) {
+	query := "SELECT id, nik, photo, first_name, last_name, username, email, gender, address, phone_number, email_verified_at, created_by, updated_by, created_time, updated_time, status FROM users WHERE 1=1"
+	countQuery := "SELECT COUNT(*) FROM users WHERE 1=1"
+	args := []interface{}{}
+	countArgs := []interface{}{}
+
+	if params.Status != nil {
+		query += " AND status = ?"
+		countQuery += " AND status = ?"
+		args = append(args, *params.Status)
+		countArgs = append(countArgs, *params.Status)
+	}
+
+	order := "id DESC"
+	if params.SortBy != "" {
+		order = params.SortBy
+		if params.SortOrder != "" {
+			order += " " + params.SortOrder
+		}
+	}
+	query += " ORDER BY " + order + " LIMIT ? OFFSET ?"
+	args = append(args, params.Limit, params.Offset)
+
+	// Count total
+	var count int
+	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&count); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var users []entity.User
+	for rows.Next() {
+		var user entity.User
+		err := rows.Scan(
+			&user.Id, &user.Nik, &user.Photo, &user.FirstName, &user.LastName,
+			&user.Username, &user.Email, &user.Gender, &user.Address,
+			&user.PhoneNumber, &user.EmailVerifiedAt, &user.CreatedBy,
+			&user.UpdatedBy, &user.CreatedTime, &user.UpdatedTime, &user.Status,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		users = append(users, user)
+	}
+
+	return users, count, nil
+}
+
 
 func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]entity.RoleUsers, []entity.RolePrivileges, error) {
 	var roles []entity.RoleUsers

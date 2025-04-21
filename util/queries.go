@@ -1,57 +1,40 @@
 package util
 
 import (
-	"strconv"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
 )
 
 type QueryParam struct {
-	Id               int
-	Sort             string
-	SortBy           string
-	Page             string
-	Limit            string
-	Offset           string
-	SpecializationId string
-	Search           string
-	PharmacyId       string
+	Id         int
+	SortBy     string
+	SortOrder  string
+	Page       int
+	Limit      int32
+	Offset     int32
+	Search     string
+	Status     *int8
 }
 
-func SetDefaultQueryParams(params QueryParam) (QueryParam, error) {
-	if params.Page == "" {
-		params.Page = "1"
-	} else {
-		pageInt, err := strconv.Atoi(params.Page)
-		if err != nil || pageInt < 1 {
-			return QueryParam{}, apperror.InvalidPageError()
-		}
+func SetDefaultQueryParams(raw QueryParam) (QueryParam, error) {
+	params := raw
+
+	// Default & validation for Limit
+	if raw.Limit == 0 {
+		params.Limit = 12
+	} else if raw.Limit < 1 {
+		return QueryParam{}, apperror.InvalidLimitError()
 	}
 
-	if params.Limit == "" {
-		params.Limit = "12"
-	} else {
-		limitInt, err := strconv.Atoi(params.Limit)
-		if err != nil || limitInt < 1 {
-			return QueryParam{}, apperror.InvalidLimitError()
-		}
+	// Default & validation for Page
+	if raw.Page == 0 {
+		params.Page = 1
+	} else if raw.Page < 1 {
+		return QueryParam{}, apperror.InvalidPageError()
 	}
 
-	pageInt, err := strconv.Atoi(params.Page)
-	if err != nil {
-		pageInt = 1
-	}
-
-	limitInt, err := strconv.Atoi(params.Limit)
-	if err != nil {
-		limitInt = 12
-	}
-
-	offsetInt := (pageInt - 1) * limitInt
-	if offsetInt < 0 {
-		offsetInt = 0
-	}
-	params.Offset = strconv.Itoa(offsetInt)
+	// Calculate Offset
+	params.Offset = int32((params.Page - 1) * int(params.Limit))
 
 	return params, nil
 }

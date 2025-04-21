@@ -16,18 +16,26 @@ type UserOtps struct {
 	Status      int8
 }
 
+type UserQuery struct {
+	Limit  int
+	Offset int
+	SortBy string
+	SortOrder string
+	Status *int
+}
+
 type UserRoles struct {
 	Id              int64
 	StatusOTP		int8
-	Nik				string
-	Photo           string
+	Nik				*string
+	Photo           *string
 	FirstName       string
 	LastName        string
 	Username        string
 	Email           string
-	Gender          string
-	Address         string
-	PhoneNumber     string
+	Gender          *string
+	Address         *string
+	PhoneNumber     *string
 	Password        string
 	EmailVerifiedAt *time.Time
 	RoleId          int64
@@ -39,7 +47,7 @@ type UserRoles struct {
 type User struct {
 	Id              int64
 	StatusOTP		int8
-	Nik				string
+	Nik				*string
 	Photo           *string
 	FirstName       string
 	LastName        string

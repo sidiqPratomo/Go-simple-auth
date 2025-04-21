@@ -161,7 +161,7 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 	userDetails := dto.User{
 		Id:              user.Id,
 		Nik:             user.Nik,
-		Photo:           &user.Photo,
+		Photo:           user.Photo,
 		FirstName:       user.FirstName,
 		LastName:        user.LastName,
 		Username:        user.Username,
@@ -169,7 +169,7 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 		Gender:          user.Gender,
 		Address:         user.Address,
 		PhoneNumber:     user.PhoneNumber,
-		EmailVerifiedAt: *user.EmailVerifiedAt,
+		EmailVerifiedAt: user.EmailVerifiedAt,
 		Status:          user.Status,
 		Role:            []string{user.RoleName}, // Set roles accordingly
 		Roles:           roleDTOs,
@@ -221,9 +221,18 @@ func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.
 
 		loginResp := &dto.LoginResponse{
 			User: dto.User{
-				Id:       user.Id,
-				Email:    user.Email,
-				Username: user.Username,
+				Id:              user.Id,
+				Nik:             user.Nik,
+				Photo:           user.Photo,
+				FirstName:       user.FirstName,
+				LastName:        user.LastName,
+				Email:           user.Email,
+				Username:        user.Username,
+				Gender:          user.Gender,
+				Address:         user.Address,
+				PhoneNumber:     user.PhoneNumber,
+				EmailVerifiedAt: user.EmailVerifiedAt,
+				Status:          user.Status,
 			},
 			Role: dto.Role{
 				Role:       roleDTOs,

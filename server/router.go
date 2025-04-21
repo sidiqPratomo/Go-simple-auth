@@ -36,19 +36,26 @@ func createRouter(log *logrus.Logger, config *config.Config) *gin.Engine {
 	}
 
 	authenticationUsecase := usecase.NewAuthenticationUsecaseImpl(usecase.AuthenticationUsecaseImplOpts{
-		Transaction: transaction,
-		HashHelper:  hashHelper,
-		JwtHelper:   jwtAuthentication,
-		EmailHelper: &emailHelper,
-		UserRepository: &userRepository,
+		Transaction:            transaction,
+		HashHelper:             hashHelper,
+		JwtHelper:              jwtAuthentication,
+		EmailHelper:            &emailHelper,
+		UserRepository:         &userRepository,
 		RefreshTokenRepository: &tokenRepository,
+	})
+	userUsercase := usecase.NewUserUsecaseImpl(usecase.UserUsecaseImplOpts{
+		UserRepository: &userRepository,
+		Transaction:    transaction,
+		JwtHelper:      jwtAuthentication,
 	})
 
 	authenticationHandler := handler.NewAuthenticationHandler(&authenticationUsecase)
+	userHandler := handler.NewUserHandler(&userUsercase)
 
 	return newRouter(
 		routerOpts{
-			Authentication:     &authenticationHandler,
+			Authentication: &authenticationHandler,
+			User:           &userHandler,
 		},
 		utilOpts{
 			JwtHelper: jwtAuthentication,
