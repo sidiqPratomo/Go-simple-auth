@@ -82,6 +82,7 @@ const (
 	FindAccountByUsernameQuery = `
 		SELECT 
 			u.id, 
+			u.nik,
 			u.status_otp,
        		COALESCE(u.photo, '') AS photo,
        		u.first_name,
@@ -100,13 +101,13 @@ const (
 		FROM users u
 		JOIN role_users ru ON u.id = ru.users_id
 		JOIN roles r ON ru.roles_id = r.id
-		WHERE u.username LIKE ? 
+		WHERE u.username = ? 
 		AND u.status = 1
 	`
 
 	PostOneAccountQuery = `
-    	INSERT INTO users (nik, email, gender, username, password, first_name, last_name, phone_number, created_time)
-    	VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    	INSERT INTO users (nik, email, gender, username, password, first_name, last_name, phone_number, created_time, status_otp)
+    	VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0)
 	`
 
 	PostRoleUserQuery = `

@@ -171,6 +171,7 @@ func (r *userRepositoryDB) FindAccountByUsername(ctx context.Context, username s
 	var account entity.UserRoles
 	err := r.db.QueryRowContext(ctx, database.FindAccountByUsernameQuery, username).Scan(
 		&account.Id,
+		&account.Nik,
 		&account.StatusOTP, 
 		&account.Photo, 
 		&account.FirstName, 

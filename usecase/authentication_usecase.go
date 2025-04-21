@@ -190,28 +190,6 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 	return response, nil
 }
 
-// func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) error {
-// 	user, err := u.userRepository.FindAccountByUsername(ctx, loginDTO.Username)
-// 	if err != nil {
-// 		if err == repository.ErrNotFound {
-// 			return apperror.BadRequestError(errors.New("username not found"))
-// 		}
-// 		return apperror.InternalServerError(err)
-// 	}
-
-// 	isPasswordValid, err := u.hashHelper.CheckPassword(loginDTO.Password, []byte(user.Password))
-// 	if !isPasswordValid {
-// 		return apperror.WrongPasswordError(err)
-// 	}
-// 	accountId64 := int(user.Id)
-
-// 	if err := u.createAndSendOTP(ctx, &accountId64, user.Email); err != nil {
-// 		return apperror.InternalServerError(err)
-// 	}
-
-// 	return nil
-// }
-
 func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.LoginRequest) (*dto.LoginResponse, error) {
 	user, err := u.userRepository.FindAccountByUsername(ctx, loginDTO.Username)
 	if err != nil {
