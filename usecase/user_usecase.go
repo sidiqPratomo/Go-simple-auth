@@ -35,12 +35,13 @@ func NewUserUsecaseImpl(opts UserUsecaseImplOpts) userUsecaseImpl {
 }
 
 func (u *userUsecaseImpl) IndexUser(ctx context.Context, params dto.UserQueryParams) (*dto.ResponseIndex[dto.PagedResult[dto.UserDetail]], error) {
+	fmt.Println("params", params)
 	queryParam := dto.MapDTOQuerytoEntity(params)
+	fmt.Println("queryParam", queryParam.Offset)
 	users, count, err := u.userRepository.FindAll(ctx, queryParam)
 	if err != nil {
 		return nil, apperror.NewAppError(500, err, "Failed to fetch users")
 	}
-	fmt.Println("user======", users);
 	var dtoUsers []dto.UserDetail
 	for _, user := range users {
 		dtoUserDetail := dto.UserDetail{
@@ -63,7 +64,6 @@ func (u *userUsecaseImpl) IndexUser(ctx context.Context, params dto.UserQueryPar
 		}
 		dtoUsers = append(dtoUsers, dtoUserDetail)
 	}
-	fmt.Println("dtoUSER======", dtoUsers)
 	result := dto.ResponseIndex[dto.PagedResult[dto.UserDetail]]{
 		Status: true,
 		Data: dto.PagedResult[dto.UserDetail]{

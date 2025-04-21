@@ -20,10 +20,10 @@ type UserRepository interface {
 	CreateOTP(ctx context.Context, userId string) (*string, error)
 	VerifyOTP(ctx context.Context, userId int, otp string) (bool, error)
 	UpdateUserVerificationStatus(ctx context.Context, userId int) error
-	CreateRoleUser(ctx context.Context, userId int)  error
+	CreateRoleUser(ctx context.Context, userId int) error
 	GetOTPByCode(ctx context.Context, otp string, userId int) (*entity.UserOtps, error)
 	FindAccountByUserId(ctx context.Context, userId int) (*entity.UserRoles, error)
-	GetUserRoles(ctx context.Context, userId int64) ([]entity.RoleUsers, []entity.RolePrivileges, error) 
+	GetUserRoles(ctx context.Context, userId int64) ([]entity.RoleUsers, []entity.RolePrivileges, error)
 }
 
 type userRepositoryDB struct {
@@ -38,8 +38,8 @@ func NewUserRepositoryDB(db *sql.DB) userRepositoryDB {
 
 // repository/user_repository_impl.go
 func (r *userRepositoryDB) FindAll(ctx context.Context, params entity.UserQuery) ([]entity.User, int, error) {
-	query := "SELECT id, nik, photo, first_name, last_name, username, email, gender, address, phone_number, email_verified_at, created_by, updated_by, created_time, updated_time, status FROM users WHERE 1=1"
-	countQuery := "SELECT COUNT(*) FROM users WHERE 1=1"
+	query := "SELECT id, nik, photo, first_name, last_name, username, email, gender, address, phone_number, email_verified_at, created_by, updated_by, created_time, updated_time, status FROM users where 1=1"
+	countQuery := "SELECT COUNT(*) FROM users where 1=1"
 	args := []interface{}{}
 	countArgs := []interface{}{}
 
@@ -61,11 +61,12 @@ func (r *userRepositoryDB) FindAll(ctx context.Context, params entity.UserQuery)
 	args = append(args, params.Limit, params.Offset)
 
 	// Count total
+	fmt.Println("QUERY=====", query)
+	fmt.Println("agument=====", args)
 	var count int
 	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&count); err != nil {
 		return nil, 0, err
 	}
-
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
@@ -75,21 +76,36 @@ func (r *userRepositoryDB) FindAll(ctx context.Context, params entity.UserQuery)
 	var users []entity.User
 	for rows.Next() {
 		var user entity.User
+		var createdTimeStr, updatedTimeStr *string
+
 		err := rows.Scan(
 			&user.Id, &user.Nik, &user.Photo, &user.FirstName, &user.LastName,
 			&user.Username, &user.Email, &user.Gender, &user.Address,
 			&user.PhoneNumber, &user.EmailVerifiedAt, &user.CreatedBy,
-			&user.UpdatedBy, &user.CreatedTime, &user.UpdatedTime, &user.Status,
+			&user.UpdatedBy, &createdTimeStr, &updatedTimeStr, &user.Status,
 		)
 		if err != nil {
 			return nil, 0, err
 		}
+
+		// Parsing created_time dan updated_time (jika tidak nil)
+		layout := time.RFC3339 // Ganti jika format di DB berbeda
+		if createdTimeStr != nil {
+			if t, err := time.Parse(layout, *createdTimeStr); err == nil {
+				user.CreatedTime = &t
+			}
+		}
+		if updatedTimeStr != nil {
+			if t, err := time.Parse(layout, *updatedTimeStr); err == nil {
+				user.UpdatedTime = &t
+			}
+		}
+
 		users = append(users, user)
 	}
 
 	return users, count, nil
 }
-
 
 func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]entity.RoleUsers, []entity.RolePrivileges, error) {
 	var roles []entity.RoleUsers
@@ -97,20 +113,20 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 
 	rows, err := r.db.QueryContext(ctx, database.FindRoleQuery, userId)
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var roleUser entity.RoleUsers
 		if err := rows.Scan(
-			&roleUser.Id, 
+			&roleUser.Id,
 			&roleUser.UserId,
-			&roleUser.RolesId.Id, 
-			&roleUser.RolesId.Name, 
-			&roleUser.RolesId.Code, 
+			&roleUser.RolesId.Id,
+			&roleUser.RolesId.Name,
+			&roleUser.RolesId.Code,
 			&roleUser.RolesId.CreatedBy,
-			&roleUser.RolesId.UpdatedBy, 
+			&roleUser.RolesId.UpdatedBy,
 			&roleUser.RolesId.CreatedTime,
 			&roleUser.RolesId.UpdatedTime,
 			&roleUser.RolesId.Status,
@@ -123,7 +139,7 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 		}
 		roles = append(roles, roleUser)
 	}
-	
+
 	privRows, err := r.db.QueryContext(ctx, database.FindPrivilegeQuery, userId)
 	if err != nil {
 		return nil, nil, err
@@ -133,9 +149,9 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 	for privRows.Next() {
 		var privilege entity.RolePrivileges
 		if err := privRows.Scan(
-			&privilege.Id, 
-			&privilege.Role, 
-			&privilege.Action, 
+			&privilege.Id,
+			&privilege.Role,
+			&privilege.Action,
 			&privilege.Uri,
 			&privilege.Method,
 			&privilege.CreatedBy,
@@ -151,16 +167,15 @@ func (r *userRepositoryDB) GetUserRoles(ctx context.Context, userId int64) ([]en
 	return roles, privileges, nil
 }
 
-
-func (r *userRepositoryDB) GetOTPByCode(ctx context.Context, otp string, userId int) (*entity.UserOtps, error){
+func (r *userRepositoryDB) GetOTPByCode(ctx context.Context, otp string, userId int) (*entity.UserOtps, error) {
 	var detailUserOtps entity.UserOtps
 	err := r.db.QueryRowContext(ctx, database.FindUserOtpsByOTP, otp, userId).Scan(
-		&detailUserOtps.Id, 
-		&detailUserOtps.User_id, 
-		&detailUserOtps.Otp, 
+		&detailUserOtps.Id,
+		&detailUserOtps.User_id,
+		&detailUserOtps.Otp,
 		&detailUserOtps.Expired_at)
 	if err != nil {
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
@@ -171,24 +186,24 @@ func (r *userRepositoryDB) GetOTPByCode(ctx context.Context, otp string, userId 
 func (r *userRepositoryDB) FindAccountByUserId(ctx context.Context, userId int) (*entity.UserRoles, error) {
 	var account entity.UserRoles
 	err := r.db.QueryRowContext(ctx, database.FindAccountByUserIdQuery, userId).Scan(
-		&account.Id, 
+		&account.Id,
 		&account.Nik,
-		&account.Photo, 
-		&account.FirstName, 
-		&account.LastName, 
-		&account.Username, 
-		&account.Email, 
-		&account.Gender, 
-		&account.Address, 
-		&account.PhoneNumber, 
-		&account.Password, 
-		&account.EmailVerifiedAt, 
-		&account.RoleId, 
-		&account.RoleName, 
+		&account.Photo,
+		&account.FirstName,
+		&account.LastName,
+		&account.Username,
+		&account.Email,
+		&account.Gender,
+		&account.Address,
+		&account.PhoneNumber,
+		&account.Password,
+		&account.EmailVerifiedAt,
+		&account.RoleId,
+		&account.RoleName,
 		&account.RoleCode,
 		&account.Status)
 	if err != nil {
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
@@ -199,23 +214,23 @@ func (r *userRepositoryDB) FindAccountByUserId(ctx context.Context, userId int) 
 func (r *userRepositoryDB) FindAccountByEmail(ctx context.Context, email string) (*entity.UserRoles, error) {
 	var account entity.UserRoles
 	err := r.db.QueryRowContext(ctx, database.FindAccountByEmailQuery, email).Scan(
-		&account.Id, 
-		&account.Photo, 
-		&account.FirstName, 
-		&account.LastName, 
-		&account.Username, 
-		&account.Email, 
-		&account.Gender, 
-		&account.Address, 
-		&account.PhoneNumber, 
-		&account.Password, 
-		&account.EmailVerifiedAt, 
-		&account.RoleId, 
-		&account.RoleName, 
+		&account.Id,
+		&account.Photo,
+		&account.FirstName,
+		&account.LastName,
+		&account.Username,
+		&account.Email,
+		&account.Gender,
+		&account.Address,
+		&account.PhoneNumber,
+		&account.Password,
+		&account.EmailVerifiedAt,
+		&account.RoleId,
+		&account.RoleName,
 		&account.RoleCode,
 		&account.Status)
 	if err != nil {
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
@@ -228,23 +243,23 @@ func (r *userRepositoryDB) FindAccountByUsername(ctx context.Context, username s
 	err := r.db.QueryRowContext(ctx, database.FindAccountByUsernameQuery, username).Scan(
 		&account.Id,
 		&account.Nik,
-		&account.StatusOTP, 
-		&account.Photo, 
-		&account.FirstName, 
-		&account.LastName, 
-		&account.Username, 
-		&account.Email, 
-		&account.Gender, 
-		&account.Address, 
-		&account.PhoneNumber, 
-		&account.Password, 
-		&account.EmailVerifiedAt, 
-		&account.RoleId, 
-		&account.RoleName, 
+		&account.StatusOTP,
+		&account.Photo,
+		&account.FirstName,
+		&account.LastName,
+		&account.Username,
+		&account.Email,
+		&account.Gender,
+		&account.Address,
+		&account.PhoneNumber,
+		&account.Password,
+		&account.EmailVerifiedAt,
+		&account.RoleId,
+		&account.RoleName,
 		&account.RoleCode,
 		&account.Status)
 	if err != nil {
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
@@ -297,8 +312,8 @@ func (r *userRepositoryDB) PostOneUser(ctx context.Context, user entity.User) (*
 	return &userIdInt, nil
 }
 
-func (r *userRepositoryDB) CreateRoleUser(ctx context.Context, userId int)  error {
-	roles_id:= 2
+func (r *userRepositoryDB) CreateRoleUser(ctx context.Context, userId int) error {
+	roles_id := 2
 	_, err := r.db.ExecContext(ctx, database.PostRoleUserQuery,
 		userId,
 		roles_id,
@@ -353,7 +368,7 @@ func (r *userRepositoryDB) VerifyOTP(ctx context.Context, userId int, otp string
 	err := r.db.QueryRowContext(ctx, database.FindUserOtp, userId, otp).Scan(&otpRecord)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return false, nil 
+			return false, nil
 		}
 		return false, err // Some other error occurred
 	}

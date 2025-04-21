@@ -33,8 +33,5 @@ func SetDefaultQueryParams(raw QueryParam) (QueryParam, error) {
 		return QueryParam{}, apperror.InvalidPageError()
 	}
 
-	// Calculate Offset
-	params.Offset = int32((params.Page - 1) * int(params.Limit))
-
 	return params, nil
 }

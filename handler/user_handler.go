@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -26,6 +27,7 @@ func (h *UserHandler) IndexUser(ctx *gin.Context) {
 	// Ambil raw string dari query dan konversi
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	skip, _ := strconv.Atoi(ctx.DefaultQuery("skip", ""))
 	statusStr := ctx.DefaultQuery("status", "")
 	var statusPtr *int8 = nil
 	if statusStr != "" {
@@ -37,13 +39,14 @@ func (h *UserHandler) IndexUser(ctx *gin.Context) {
 	}
 
 	rawParams := util.QueryParam{
+		Offset:    int32(skip),
 		SortBy:    ctx.DefaultQuery("sortBy", ""),
 		SortOrder: ctx.DefaultQuery("sort", ""),
 		Page:      page,
 		Limit:     int32(limit),
 		Status:    statusPtr,
 	}
-
+	fmt.Println("rawParams", rawParams.Offset)
 	params, err := util.SetDefaultQueryParams(rawParams)
 	if err != nil {
 		ctx.Error(err)
@@ -51,11 +54,11 @@ func (h *UserHandler) IndexUser(ctx *gin.Context) {
 	}
 
 	dtoQueryParams := dto.UserQueryParams{
-		Limit:    params.Limit,
-		Offset:   params.Offset,
-		SortBy:   params.SortBy,
+		Limit:     params.Limit,
+		Offset:    params.Offset,
+		SortBy:    params.SortBy,
 		SortOrder: params.SortOrder,
-		Status:   statusPtr,
+		Status:    statusPtr,
 	}
 
 	users, err := h.userUsecase.IndexUser(ctx, dtoQueryParams)
