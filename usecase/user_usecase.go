@@ -14,6 +14,7 @@ type UserUsecase interface {
 	IndexUser(ctx context.Context, params dto.UserQueryParams) (*dto.ResponseIndex[dto.PagedResult[dto.UserDetail]], error)
 	ReadUser(ctx context.Context, userID int) (*dto.User, error)
 	UpdateUser(ctx context.Context, input dto.UpdateUserRequest) (*dto.UserDetail, error)
+	SoftDeleteUser(ctx context.Context, userID int, updatedBy string) error
 }
 
 type userUsecaseImpl struct {
@@ -170,6 +171,26 @@ func (u *userUsecaseImpl) UpdateUser(ctx context.Context, input dto.UpdateUserRe
 	}, nil
 }
 
-// func (u *userUsecaseImpl) SoftDeleteUser(userID int64) error {
-// 	return u.userRepository.SoftDelete(userID)
-// }
+func (u *userUsecaseImpl) SoftDeleteUser(ctx context.Context, userID int, updatedBy string) error {
+	tx, err := u.transaction.BeginTx()
+	if err != nil {
+		return apperror.InternalServerError(err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	err = tx.UserRepository().SoftDeleteUser(ctx, userID, updatedBy)
+	if err != nil {
+		tx.Rollback()
+		return apperror.InternalServerError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return apperror.InternalServerError(err)
+	}
+
+	return nil
+}

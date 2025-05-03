@@ -12,6 +12,7 @@ import (
 )
 
 type UserRepository interface {
+	SoftDeleteUser(ctx context.Context, userID int, updatedBy string) error
 	UpdateUser(ctx context.Context, user entity.User) error
 	FindByID(ctx context.Context, id int) (*entity.User, error)
 	FindAll(ctx context.Context, params entity.UserQuery) ([]entity.User, int, error)
@@ -36,6 +37,16 @@ func NewUserRepositoryDB(db *sql.DB) userRepositoryDB {
 	return userRepositoryDB{
 		db: db,
 	}
+}
+
+func (r *userRepositoryDB) SoftDeleteUser(ctx context.Context, userID int, updatedBy string) error {
+	query := `
+		UPDATE users 
+		SET status = 0, updated_by = ?, updated_time = NOW() 
+		WHERE id = ? AND status != 0
+	`
+	_, err := r.db.ExecContext(ctx, query, updatedBy, userID)
+	return err
 }
 
 func (r *userRepositoryDB) UpdateUser(ctx context.Context, user entity.User) error {

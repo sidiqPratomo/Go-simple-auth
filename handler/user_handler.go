@@ -144,3 +144,33 @@ func (h *UserHandler) UpdateUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "data": result})
 }
+
+func (h *UserHandler) DeleteUser(ctx *gin.Context) {
+	ctx.Header("Content-Type", "application/json")
+
+	id := ctx.Param("id")
+	if id == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID is required"})
+		return
+	}
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	updatedBy, exists := ctx.Get(appconstant.AccountId)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	updatedByStr := fmt.Sprintf("%v", updatedBy)
+
+	err = h.userUsecase.SoftDeleteUser(ctx, idInt, updatedByStr)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
