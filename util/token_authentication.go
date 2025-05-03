@@ -13,7 +13,6 @@ type JwtCustomClaims struct {
 	UserId        int64  `json:"user_id"`
 	Email         string `json:"email"`
 	Role          string `json:"role"`
-	TokenDuration int    `json:"token_duration"`
 }
 
 type TokenAuthentication interface {
@@ -39,7 +38,7 @@ func (ja JwtAuthentication) CreateAndSign(customClaims JwtCustomClaims, secretKe
 
 	decimalTime := float64(seconds) + float64(nanoseconds)/1e9
 
-	expiredAt := time.Now().Add(time.Duration(customClaims.TokenDuration) * time.Minute).Unix()
+	expiredAt := time.Now().Add(time.Duration(ja.Config.TokenDuration) * time.Minute).Unix()
 
 	token := jwt.NewWithClaims(ja.Method, jwt.MapClaims{
 		"jti":  generateJTI(),
@@ -49,7 +48,7 @@ func (ja JwtAuthentication) CreateAndSign(customClaims JwtCustomClaims, secretKe
 		"data": string(customClaimsJsonBytes),
 	})
 
-	expired := time.Now().Add(time.Duration(customClaims.TokenDuration) * time.Minute).Format("2006-01-02 15:04:05")
+	expired := time.Now().Add(time.Duration(ja.Config.TokenDuration) * time.Minute).Format("2006-01-02 15:04:05")
 
 	signed, err := token.SignedString([]byte(secretKey))
 	if err != nil {

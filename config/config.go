@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Port                string
+	TokenDuration		int
 	Host				string
 	FEPort              string
 	DbUsername          string
@@ -54,6 +55,13 @@ func Init(log *logrus.Logger) *Config {
 		}).Fatal("error loading .env file")
 	}
 
+	tokenDUration, err := strconv.Atoi(os.Getenv("TOKEN_DURATION"))
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": "TOKEN_DURATION must be integer",
+		}).Fatal("error loading .env file")
+	}
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		os.Getenv("DB_USERNAME"),    // MySQL username
 		os.Getenv("DB_PASSWORD"),    // MySQL password
@@ -64,6 +72,7 @@ func Init(log *logrus.Logger) *Config {
 
 	return &Config{
 		Port:                os.Getenv("BE_PORT"),
+		TokenDuration:		 tokenDUration,
 		Host:				 os.Getenv("HOST"),
 		FEPort:              os.Getenv("FE_PORT"),
 		DbUsername:          os.Getenv("DB_USERNAME"),

@@ -138,6 +138,7 @@ func MapDTOQuerytoEntity(params UserQueryParams) entity.UserQuery {
 		Limit:     int(params.Limit),
 		Offset:    int(params.Offset),
 		SortBy:    params.SortBy,
+		SortOrder: params.SortOrder,
 		Status:    status,
 	}
 }

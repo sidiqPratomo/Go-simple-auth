@@ -61,8 +61,6 @@ func (r *userRepositoryDB) FindAll(ctx context.Context, params entity.UserQuery)
 	args = append(args, params.Limit, params.Offset)
 
 	// Count total
-	fmt.Println("QUERY=====", query)
-	fmt.Println("agument=====", args)
 	var count int
 	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&count); err != nil {
 		return nil, 0, err

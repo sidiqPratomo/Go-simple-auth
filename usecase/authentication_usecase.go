@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
@@ -63,7 +62,6 @@ func (u *authenticationUsecaseImpl) GetNewAccessToken(ctx context.Context, refre
 		return nil, apperror.RefreshTokenExpiredError()
 	}
 
-	claim.TokenDuration = 15
 	accessToken, _, err := u.JwtHelper.CreateAndSign(*claim, u.JwtHelper.Config.AccessSecret)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
@@ -120,7 +118,7 @@ func (u *authenticationUsecaseImpl) VerifyUserLogin(ctx context.Context, verifyO
 		return nil, apperror.InternalServerError(err)
 	}
 
-	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
+	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName}
 	token, expired, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
 	if err != nil {
 		return nil, apperror.InternalServerError(err)
@@ -204,10 +202,9 @@ func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.
 	if !isPasswordValid {
 		return nil, apperror.WrongPasswordError(err)
 	}
-	fmt.Println("user.StatusOTP", user)
 
 	// Jika status OTP = 0, langsung login dan kirim token
-	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
+	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName}
 	if user.StatusOTP == 0 {
 		accessToken, expiresAt, err := u.JwtHelper.CreateAndSign(customClaims, u.JwtHelper.Config.AccessSecret)
 		if err != nil {

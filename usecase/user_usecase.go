@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/dto"
@@ -35,9 +34,8 @@ func NewUserUsecaseImpl(opts UserUsecaseImplOpts) userUsecaseImpl {
 }
 
 func (u *userUsecaseImpl) IndexUser(ctx context.Context, params dto.UserQueryParams) (*dto.ResponseIndex[dto.PagedResult[dto.UserDetail]], error) {
-	fmt.Println("params", params)
 	queryParam := dto.MapDTOQuerytoEntity(params)
-	fmt.Println("queryParam", queryParam.Offset)
+
 	users, count, err := u.userRepository.FindAll(ctx, queryParam)
 	if err != nil {
 		return nil, apperror.NewAppError(500, err, "Failed to fetch users")
