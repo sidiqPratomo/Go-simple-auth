@@ -65,6 +65,7 @@ type VerifyUserLoginRequest struct {
 
 type User struct {
 	Id              int64      `json:"id"`
+	StatusOTP		*int8      `json:"status_otp"`
 	Nik				*string	   `json:"nik"`
 	Photo           *string    `json:"photo"`
 	FirstName       string     `json:"first_name"`

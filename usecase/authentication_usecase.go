@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
@@ -203,6 +204,7 @@ func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.
 	if !isPasswordValid {
 		return nil, apperror.WrongPasswordError(err)
 	}
+	fmt.Println("user.StatusOTP", user)
 
 	// Jika status OTP = 0, langsung login dan kirim token
 	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName, TokenDuration: 15}
@@ -222,6 +224,7 @@ func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.
 		loginResp := &dto.LoginResponse{
 			User: dto.User{
 				Id:              user.Id,
+				StatusOTP:       &user.StatusOTP,
 				Nik:             user.Nik,
 				Photo:           user.Photo,
 				FirstName:       user.FirstName,
