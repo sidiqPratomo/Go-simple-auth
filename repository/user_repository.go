@@ -12,6 +12,7 @@ import (
 )
 
 type UserRepository interface {
+	FindByID(ctx context.Context, id int) (*entity.User, error)
 	FindAll(ctx context.Context, params entity.UserQuery) ([]entity.User, int, error)
 	PostOneUser(ctx context.Context, account entity.User) (*int, error)
 	GetAllUser(ctx context.Context, user entity.User) ([]entity.User, error)
@@ -34,6 +35,55 @@ func NewUserRepositoryDB(db *sql.DB) userRepositoryDB {
 	return userRepositoryDB{
 		db: db,
 	}
+}
+
+func (r *userRepositoryDB) FindByID(ctx context.Context, id int) (*entity.User, error) {
+	var account entity.User
+	var createdTimeStr, updatedTimeStr *string
+
+	err := r.db.QueryRowContext(ctx, database.FindUserByIdQuery, id).Scan(
+		&account.Id,
+		&account.StatusOTP,
+		&account.Nik,
+		&account.Photo,
+		&account.FirstName,
+		&account.LastName,
+		&account.Username,
+		&account.Email,
+		&account.Gender,
+		&account.Address,
+		&account.PhoneNumber,
+		&account.EmailVerifiedAt,
+		&account.Status,
+		&account.CreatedBy,
+		&account.UpdatedBy,
+		&createdTimeStr,
+		&updatedTimeStr,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	layout := "2006-01-02 15:04:05"
+	if createdTimeStr != nil {
+		if t, err := time.Parse(layout, *createdTimeStr); err == nil {
+			account.CreatedTime = &t
+		} else {
+			fmt.Println("error parsing created_time:", err)
+		}
+	}
+	if updatedTimeStr != nil {
+		if t, err := time.Parse(layout, *updatedTimeStr); err == nil {
+			account.UpdatedTime = &t
+		} else {
+			fmt.Println("error parsing updated_time:", err)
+		}
+	}
+
+	return &account, nil
 }
 
 // repository/user_repository_impl.go

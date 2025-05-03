@@ -1,6 +1,30 @@
 package database
 
 const (
+	FindUserByIdQuery = `
+		SELECT 
+			u.id, 
+			u.status_otp,
+			u.nik,
+       		COALESCE(u.photo, '') AS photo,
+       		u.first_name,
+			u.last_name,
+			u.username,
+			u.email,
+			COALESCE(u.gender,'') AS gender,
+			COALESCE(u.address, '') AS address,
+			COALESCE(u.phone_number, '') AS phone_number,
+			CAST(u.email_verified_at AS DATETIME) AS email_verified_at,
+			u.status,
+			u.created_by,
+			u.updated_by,
+			u.created_time,
+			u.updated_time
+		FROM users u
+		WHERE u.id LIKE ? 
+		AND u.status = 1;
+	`
+
 	FindPrivilegeQuery = `
 		SELECT rp.id, rp.role, rp.action, rp.uri, rp.method, rp.created_by ,rp.updated_by , rp.created_time , rp.updated_time, rp.status 
 		FROM role_privileges rp

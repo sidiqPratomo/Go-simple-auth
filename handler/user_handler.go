@@ -81,3 +81,26 @@ func parseSortQuery(ctx *gin.Context) (string, string) {
 	}
 	return "id", "DESC" // default fallback
 }
+
+func (h *UserHandler) ReadUser(ctx *gin.Context) {
+	ctx.Header("Content-Type", "application/json")
+
+	id := ctx.Param("id")
+	if id == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID is required"})
+		return
+	}
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	user, err := h.userUsecase.ReadUser(ctx, idInt)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, user)
+}

@@ -78,4 +78,5 @@ func userRouting(router *gin.RouterGroup, handler *handler.UserHandler, authMidd
 	authRouter:= router.Group("/users")
 
 	authRouter.GET("/",authMiddleware, handler.IndexUser)
+	authRouter.GET("/:id",authMiddleware, handler.ReadUser)
 }

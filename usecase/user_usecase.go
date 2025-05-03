@@ -11,6 +11,7 @@ import (
 
 type UserUsecase interface {
 	IndexUser(ctx context.Context, params dto.UserQueryParams) (*dto.ResponseIndex[dto.PagedResult[dto.UserDetail]], error)
+	ReadUser(ctx context.Context, userID int) (*dto.User, error)
 }
 
 type userUsecaseImpl struct {
@@ -75,13 +76,33 @@ func (u *userUsecaseImpl) IndexUser(ctx context.Context, params dto.UserQueryPar
 	return &result, nil
 }
 
-// func (u *userUsecaseImpl) ReadUser(userID int64) (*dto.User, error) {
-// 	user, err := u.userRepository.FindByID(userID)
-// 	if err != nil {
-// 		return dto.User{}, err
-// 	}
-// 	return user, nil
-// }
+func (u *userUsecaseImpl) ReadUser(ctx context.Context, userID int) (*dto.User, error) {
+	user, err := u.userRepository.FindByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	userDetails := dto.User{
+		Id:              user.Id,
+		StatusOTP:       &user.StatusOTP,
+		Nik:             user.Nik,
+		Photo:           user.Photo,
+		FirstName:       user.FirstName,
+		LastName:        user.LastName,
+		Username:        user.Username,
+		Email:           user.Email,
+		Gender:          user.Gender,
+		Address:         user.Address,
+		PhoneNumber:     user.PhoneNumber,
+		EmailVerifiedAt: user.EmailVerifiedAt,
+		Status:          int(user.Status),
+		CreatedBy:       user.CreatedBy,
+		UpdatedBy:       user.UpdatedBy,
+		CreatedTime:     user.CreatedTime,
+		UpdatedTime:     user.UpdatedTime,
+	}
+	return &userDetails, nil
+}
 
 // func (u *userUsecaseImpl) UpdateUser(userID int64, input dto.UpdateUserRequest) (dto.UserDetail, error) {
 // 	err := u.transaction.WithTransaction(func() error {
