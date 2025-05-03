@@ -1,6 +1,22 @@
 package database
 
 const (
+	UpdateUserQuery = `UPDATE users SET 
+			status_otp = ?,
+			nik = ?,
+			photo = ?,
+			first_name = ?, 
+			last_name = ?, 
+			username = ?, 
+			email = ?, 
+			gender = ?, 
+			address = ?, 
+			phone_number = ?, 
+			status = ?, 
+			updated_by = ?,
+			updated_time = NOW()
+		WHERE id = ?`
+
 	FindUserByIdQuery = `
 		SELECT 
 			u.id, 

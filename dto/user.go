@@ -60,26 +60,42 @@ type LoginRequest struct {
 
 type VerifyUserLoginRequest struct {
 	Username string `json:"username" binding:"required"`
-	OTP string `json:"otp" binding:"required"`
+	OTP      string `json:"otp" binding:"required"`
+}
+
+type UpdateUserRequest struct {
+	Id          int64   `json:"-"`
+	StatusOTP   *int8   `json:"status_otp" binding:"required"`
+	Nik         *string `json:"nik"`
+	Photo       *string `json:"photo"`
+	FirstName   string  `json:"first_name" binding:"required"`
+	LastName    string  `json:"last_name"`
+	Username    string  `json:"username" binding:"required"`
+	Email       string  `json:"email" binding:"required,email"`
+	Gender      *string `json:"gender"`
+	Address     *string `json:"address"`
+	PhoneNumber *string `json:"phone_number"`
+	UpdatedBy   *string `json:"updated_by"`
+	Status      int8    `json:"status"`
 }
 
 type User struct {
 	Id              int64      `json:"id"`
-	StatusOTP		*int8      `json:"status_otp"`
-	Nik				*string	   `json:"nik"`
+	StatusOTP       *int8      `json:"status_otp"`
+	Nik             *string    `json:"nik"`
 	Photo           *string    `json:"photo"`
 	FirstName       string     `json:"first_name"`
 	LastName        string     `json:"last_name"`
 	Username        string     `json:"username"`
 	Email           string     `json:"email"`
-	Gender          *string     `json:"gender"`
-	Address         *string     `json:"address"`
-	PhoneNumber     *string     `json:"phone_number"`
-	EmailVerifiedAt *time.Time  `json:"email_verified_at"`
+	Gender          *string    `json:"gender"`
+	Address         *string    `json:"address"`
+	PhoneNumber     *string    `json:"phone_number"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
 	CreatedBy       *string    `json:"created_by"`
 	UpdatedBy       *string    `json:"updated_by"`
-	CreatedTime     *time.Time  `json:"created_time"`
-	UpdatedTime     *time.Time  `json:"updated_time"`
+	CreatedTime     *time.Time `json:"created_time"`
+	UpdatedTime     *time.Time `json:"updated_time"`
 	Status          int        `json:"status"`
 	Role            []string   `json:"role"`
 	Roles           []UserRole `json:"roles"`
@@ -87,32 +103,32 @@ type User struct {
 
 type UserDetail struct {
 	Id              int64      `json:"id"`
-	Nik				*string	   `json:"nik"`
+	Nik             *string    `json:"nik"`
 	Photo           *string    `json:"photo"`
 	FirstName       string     `json:"first_name"`
 	LastName        string     `json:"last_name"`
 	Username        string     `json:"username"`
 	Email           string     `json:"email"`
-	Gender          *string     `json:"gender"`
-	Address         *string     `json:"address"`
-	PhoneNumber     *string     `json:"phone_number"`
-	EmailVerifiedAt *time.Time  `json:"email_verified_at"`
+	Gender          *string    `json:"gender"`
+	Address         *string    `json:"address"`
+	PhoneNumber     *string    `json:"phone_number"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
 	CreatedBy       *string    `json:"created_by"`
 	UpdatedBy       *string    `json:"updated_by"`
-	CreatedTime     *time.Time  `json:"created_time"`
-	UpdatedTime     *time.Time  `json:"updated_time"`
+	CreatedTime     *time.Time `json:"created_time"`
+	UpdatedTime     *time.Time `json:"updated_time"`
 	Status          int        `json:"status"`
 }
 
-type UserQueryParams struct{
-	Limit int32
-	Offset int32
-	SortBy string
+type UserQueryParams struct {
+	Limit     int32
+	Offset    int32
+	SortBy    string
 	SortOrder string
-	Status *int8
+	Status    *int8
 }
 
-type Users struct{
+type Users struct {
 	Users []User `json:"users"`
 }
 
@@ -150,35 +166,35 @@ type UserRole struct {
 	RolesId     RoleDetail `json:"roles_id"`
 	CreatedBy   *string    `json:"created_by"`
 	UpdatedBy   *string    `json:"updated_by"`
-	CreatedTime *string  `json:"created_time"`
-	UpdatedTime *string  `json:"updated_time"`
+	CreatedTime *string    `json:"created_time"`
+	UpdatedTime *string    `json:"updated_time"`
 	Status      int        `json:"status"`
 }
 
 // RoleDetail represents detailed information about each role.
 type RoleDetail struct {
-	Id          int64     `json:"id"`
-	Name        string    `json:"name"`
-	Code        string    `json:"code"`
-	CreatedBy   *string   `json:"created_by"`
-	UpdatedBy   *string   `json:"updated_by"`
+	Id          int64      `json:"id"`
+	Name        string     `json:"name"`
+	Code        string     `json:"code"`
+	CreatedBy   *string    `json:"created_by"`
+	UpdatedBy   *string    `json:"updated_by"`
 	CreatedTime *time.Time `json:"created_time"`
 	UpdatedTime *time.Time `json:"updated_time"`
-	Status      int       `json:"status"`
+	Status      int        `json:"status"`
 }
 
 // Privilege represents each privilege associated with a role.
 type Privilege struct {
-	Id          int64     `json:"id"`
-	Role        int64     `json:"role"`
-	Action      string    `json:"action"`
-	Uri         string    `json:"uri"`
-	Method      string    `json:"method"`
-	CreatedBy   *string   `json:"created_by"`
-	UpdatedBy   *string   `json:"updated_by"`
+	Id          int64      `json:"id"`
+	Role        int64      `json:"role"`
+	Action      string     `json:"action"`
+	Uri         string     `json:"uri"`
+	Method      string     `json:"method"`
+	CreatedBy   *string    `json:"created_by"`
+	UpdatedBy   *string    `json:"updated_by"`
 	CreatedTime *time.Time `json:"created_time"`
 	UpdatedTime *time.Time `json:"updated_time"`
-	Status      int       `json:"status"`
+	Status      int        `json:"status"`
 }
 
 // Role represents the structure of the role in the response.
@@ -207,7 +223,7 @@ func MapRolesToDTOs(roles []entity.RoleUsers) []UserRole {
 	for _, role := range roles {
 		roleDTOs = append(roleDTOs, UserRole{
 			Id:      role.Id,
-			UsersId:  int64(role.UserId),
+			UsersId: int64(role.UserId),
 			RolesId: RoleDetail{
 				Id:        role.RolesId.Id,
 				Name:      role.RolesId.Name,
@@ -216,11 +232,11 @@ func MapRolesToDTOs(roles []entity.RoleUsers) []UserRole {
 				UpdatedBy: role.RolesId.UpdatedBy,
 				Status:    int(role.RolesId.Status),
 			},
-			CreatedBy:  role.CreatedBy,
-			UpdatedBy:  role.UpdatedBy,
+			CreatedBy:   role.CreatedBy,
+			UpdatedBy:   role.UpdatedBy,
 			CreatedTime: role.CreatedTime,
 			UpdatedTime: role.UpdatedTime,
-			Status:     int(role.Status),
+			Status:      int(role.Status),
 		})
 	}
 	return roleDTOs

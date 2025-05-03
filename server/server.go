@@ -79,4 +79,5 @@ func userRouting(router *gin.RouterGroup, handler *handler.UserHandler, authMidd
 
 	authRouter.GET("/",authMiddleware, handler.IndexUser)
 	authRouter.GET("/:id",authMiddleware, handler.ReadUser)
+	authRouter.PUT("/:id",authMiddleware, handler.UpdateUser)
 }

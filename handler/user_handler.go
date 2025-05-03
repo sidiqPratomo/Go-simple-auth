@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sidiqPratomo/DJKI-Pengaduan/appconstant"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/dto"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/usecase"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/util"
@@ -103,4 +105,42 @@ func (h *UserHandler) ReadUser(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, user)
+}
+
+func (h *UserHandler) UpdateUser(ctx *gin.Context) {
+	ctx.Header("Content-Type", "application/json")
+
+	id := ctx.Param("id")
+	if id == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID is required"})
+		return
+	}
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	var user dto.UpdateUserRequest
+	if err := ctx.ShouldBindJSON(&user); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updatedBy, exists := ctx.Get(appconstant.AccountId)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	user.Id = idInt
+	updatedByStr := fmt.Sprintf("%v", updatedBy)
+	user.UpdatedBy = &updatedByStr
+	result, err := h.userUsecase.UpdateUser(ctx, user)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "data": result})
 }

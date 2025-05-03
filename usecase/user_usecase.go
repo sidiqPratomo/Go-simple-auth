@@ -5,6 +5,7 @@ import (
 
 	"github.com/sidiqPratomo/DJKI-Pengaduan/apperror"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/dto"
+	"github.com/sidiqPratomo/DJKI-Pengaduan/entity"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/repository"
 	"github.com/sidiqPratomo/DJKI-Pengaduan/util"
 )
@@ -12,6 +13,7 @@ import (
 type UserUsecase interface {
 	IndexUser(ctx context.Context, params dto.UserQueryParams) (*dto.ResponseIndex[dto.PagedResult[dto.UserDetail]], error)
 	ReadUser(ctx context.Context, userID int) (*dto.User, error)
+	UpdateUser(ctx context.Context, input dto.UpdateUserRequest) (*dto.UserDetail, error)
 }
 
 type userUsecaseImpl struct {
@@ -104,19 +106,69 @@ func (u *userUsecaseImpl) ReadUser(ctx context.Context, userID int) (*dto.User, 
 	return &userDetails, nil
 }
 
-// func (u *userUsecaseImpl) UpdateUser(userID int64, input dto.UpdateUserRequest) (dto.UserDetail, error) {
-// 	err := u.transaction.WithTransaction(func() error {
-// 		if err := u.userRepository.Update(userID, input); err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// 	if err != nil {
-// 		return dto.UserDetail{}, err
-// 	}
+func (u *userUsecaseImpl) UpdateUser(ctx context.Context, input dto.UpdateUserRequest) (*dto.UserDetail, error) {
+	userEntity := entity.User{
+		Id:          input.Id,
+		StatusOTP:   *input.StatusOTP,
+		Nik:         input.Nik,
+		Photo:       input.Photo,
+		FirstName:   input.FirstName,
+		LastName:    input.LastName,
+		Username:    input.Username,
+		Email:       input.Email,
+		Gender:      input.Gender,
+		Address:     input.Address,
+		PhoneNumber: input.PhoneNumber,
+		UpdatedBy:   input.UpdatedBy,
+		Status:      input.Status,
+	}
 
-// 	return u.userRepository.FindByID(userID)
-// }
+	tx, err := u.transaction.BeginTx()
+	if err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	updateUserTx := tx.UserRepository()
+	err = updateUserTx.UpdateUser(ctx, userEntity)
+	if err != nil {
+		tx.Rollback()
+		return nil, apperror.InternalServerError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, apperror.InternalServerError(err)
+	}
+
+	updatedUser, err := u.userRepository.FindByID(ctx, int(input.Id))
+	if err != nil {
+		return nil, err
+	}
+
+	// Mapping to DTO
+	return &dto.UserDetail{
+		Id:              updatedUser.Id,
+		Nik:             updatedUser.Nik,
+		Photo:           updatedUser.Photo,
+		FirstName:       updatedUser.FirstName,
+		LastName:        updatedUser.LastName,
+		Username:        updatedUser.Username,
+		Email:           updatedUser.Email,
+		Gender:          updatedUser.Gender,
+		Address:         updatedUser.Address,
+		PhoneNumber:     updatedUser.PhoneNumber,
+		EmailVerifiedAt: updatedUser.EmailVerifiedAt,
+		CreatedBy:       updatedUser.CreatedBy,
+		UpdatedBy:       updatedUser.UpdatedBy,
+		CreatedTime:     updatedUser.CreatedTime,
+		UpdatedTime:     updatedUser.UpdatedTime,
+		Status:          int(updatedUser.Status),
+	}, nil
+}
 
 // func (u *userUsecaseImpl) SoftDeleteUser(userID int64) error {
 // 	return u.userRepository.SoftDelete(userID)

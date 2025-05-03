@@ -12,6 +12,7 @@ import (
 )
 
 type UserRepository interface {
+	UpdateUser(ctx context.Context, user entity.User) error
 	FindByID(ctx context.Context, id int) (*entity.User, error)
 	FindAll(ctx context.Context, params entity.UserQuery) ([]entity.User, int, error)
 	PostOneUser(ctx context.Context, account entity.User) (*int, error)
@@ -35,6 +36,27 @@ func NewUserRepositoryDB(db *sql.DB) userRepositoryDB {
 	return userRepositoryDB{
 		db: db,
 	}
+}
+
+func (r *userRepositoryDB) UpdateUser(ctx context.Context, user entity.User) error {
+	query := database.UpdateUserQuery
+
+	_, err := r.db.ExecContext(ctx, query,
+		user.StatusOTP,
+		user.Nik,
+		user.Photo,
+		user.FirstName,
+		user.LastName,
+		user.Username,
+		user.Email,
+		user.Gender,
+		user.Address,
+		user.PhoneNumber,
+		user.Status,
+		user.UpdatedBy,
+		user.Id,
+	)
+	return err
 }
 
 func (r *userRepositoryDB) FindByID(ctx context.Context, id int) (*entity.User, error) {
