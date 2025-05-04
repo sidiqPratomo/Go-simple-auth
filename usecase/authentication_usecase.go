@@ -203,6 +203,10 @@ func (u *authenticationUsecaseImpl) LoginUser(ctx context.Context, loginDTO dto.
 		return nil, apperror.WrongPasswordError(err)
 	}
 
+	if user.EmailVerifiedAt == nil{
+		return nil, apperror.NewAppError(400, err, "User Not verified")
+	}
+
 	// Jika status OTP = 0, langsung login dan kirim token
 	customClaims := util.JwtCustomClaims{UserId: user.Id, Email: user.Email, Role: user.RoleName}
 	if user.StatusOTP == 0 {
